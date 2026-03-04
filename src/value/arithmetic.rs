@@ -33,7 +33,7 @@ where
 
         // If checked_add overflowed for integers, promote and add normally
         *self = result.unwrap_or_else(|| {
-            self.promote(); // whatever your promote() does
+            self.promote();
             match self {
                 Value::UnsignedInt(n) => {
                     let rhs_val = u64::try_from(&rhs).expect("orders must match");

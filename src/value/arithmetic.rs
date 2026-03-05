@@ -263,6 +263,7 @@ mod test {
         test_subs!(UnsignedInt => 1, UnsignedInt => 2, SignedInt);
         test_subs!(SignedInt => -5, SignedInt => 10, SignedInt);
         test_subs!(UnsignedBigInt => 1_000_000_000_000, SignedBigInt => -1_000_000_000_000, SignedBigInt);
+        test_subs!(SignedBigInt => i128::MAX, UnsignedBigInt => 170141183460469231722463931679029329921, SignedBigInt);
         test_subs!(UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedInt);
         test_subs!(SignedInt => i64::MAX, SignedInt => 1, SignedInt);
         test_subs!(Float => u128::MAX as f64 + 1.0, UnsignedInt => 10, Float);
@@ -272,6 +273,7 @@ mod test {
         test_subs!(SignedBigInt => -100, Float => 0.5, Float);
         test_subs!(Float => 1.1, Float => 2.2, Float);
         test_subs!(Float => -1.5, Float => 0.5, Float);
+        test_subs!(UnsignedInt => 0, SignedInt => i64::MIN, SignedBigInt);
         test_subs!(SignedInt => 0, SignedInt => i64::MIN, SignedBigInt);
         test_subs!(SignedBigInt => i128::MAX, Float => 0.1, Float);
         test_subs!(UnsignedBigInt => u128::MAX, Float => 1.0, Float);

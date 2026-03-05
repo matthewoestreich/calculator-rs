@@ -1,4 +1,5 @@
 pub mod arithmetic;
+pub mod comparison;
 pub mod conversion;
 pub mod error;
 pub mod fmt;
@@ -10,7 +11,7 @@ pub(crate) use dispatch_operation::*;
 
 use crate::value::conversion::ToPrimitive as _;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy)]
 pub enum Value {
     UnsignedInt(u64),
     UnsignedBigInt(u128),

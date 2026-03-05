@@ -13,6 +13,17 @@ impl CheckedAdd for f64 {
     }
 }
 
+// shim for the missing method on f64
+trait CheckedSub: Sized + ops::Sub<Output = Self> {
+    fn checked_sub(self, rhs: Self) -> Option<Self>;
+}
+
+impl CheckedSub for f64 {
+    fn checked_sub(self, rhs: Self) -> Option<Self> {
+        Some(self - rhs)
+    }
+}
+
 impl<Rhs> AddAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -44,10 +55,14 @@ where
 {
     fn sub_assign(&mut self, rhs: Rhs) {
         let mut rhs = rhs.into();
-        if rhs.order() > self.order() {
+        if rhs > *self {
             self.promote_to_signed();
         }
-        dispatch_operation!(self, rhs, n, |rhs| *n -= rhs);
+        *self = dispatch_operation!(self, rhs, n, |rhs| (*n).checked_sub(rhs).map(Value::from))
+            .unwrap_or_else(|| {
+                self.promote();
+                dispatch_operation!(self, rhs, n, |rhs| Value::from(*n - rhs))
+            });
     }
 }
 
@@ -160,51 +175,105 @@ impl ops::Neg for Value {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::value::Order;
 
-    macro_rules! assert_value_eq {
-        ($lhs:expr, $rhs:expr) => {{
-            match ($lhs, $rhs) {
-                (Value::Float(l), Value::Float(r)) => {
-                    let diff = (l - r).abs();
-                    let tol = f64::EPSILON * l.abs().max(r.abs()).max(1.0);
-                    assert!(diff <= tol, "lhs: {:?}, rhs: {:?}, diff: {:?}", l, r, diff);
-                }
-                (l, r) => assert_eq!(l, r),
-            }
+    macro_rules! test_adds {
+        ($lhs_variant:ident => $lhs_val:expr, $rhs_variant:ident => $rhs_val:expr, $expected_variant:ident) => {{
+            let expected = Order::$expected_variant;
+            // Test Add
+            let lhs = Value::$lhs_variant($lhs_val);
+            let rhs = Value::$rhs_variant($rhs_val);
+            let result = lhs + rhs;
+            assert_eq!(
+                result.order(),
+                expected,
+                "[Add] result.order()={:?} | expected={expected:?}",
+                result.order()
+            );
+            // Test AddAssign
+            let mut lhs = Value::$lhs_variant($lhs_val);
+            let rhs = Value::$rhs_variant($rhs_val);
+            lhs += rhs;
+            assert_eq!(
+                lhs.order(),
+                expected,
+                "[AddAssign] lhs.order()={:?} | expected={expected:?}",
+                lhs.order()
+            );
         }};
     }
 
-    macro_rules! test_add_assign {
-        ($lhs_variant:ident => $lhs_val:expr, $rhs_variant:ident => $rhs_val:expr, $expected_variant:ident => $expected_val:expr) => {{
+    macro_rules! test_subs {
+        ($lhs_variant:ident => $lhs_val:expr, $rhs_variant:ident => $rhs_val:expr, $expected_variant:ident) => {{
+            let expected = Order::$expected_variant;
+            // Test Sub
+            let lhs = Value::$lhs_variant($lhs_val);
+            let rhs = Value::$rhs_variant($rhs_val);
+            let result = lhs - rhs;
+            assert_eq!(
+                result.order(),
+                expected,
+                "[Sub] result.order()={:?} | expected={expected:?}",
+                result.order()
+            );
+            // Test SubAssign
             let mut lhs = Value::$lhs_variant($lhs_val);
             let rhs = Value::$rhs_variant($rhs_val);
-            let expected = Value::$expected_variant($expected_val);
-            lhs += rhs;
-            assert_value_eq!(lhs, expected);
+            lhs -= rhs;
+            assert_eq!(
+                lhs.order(),
+                expected,
+                "[SubAssign] lhs.order()={:?} | expected={expected:?}",
+                lhs.order()
+            );
         }};
     }
 
     #[test]
-    fn add_assign() {
-        test_add_assign!(UnsignedInt => 200, UnsignedInt => 200, UnsignedInt => 400);
-        test_add_assign!(SignedInt => -10, UnsignedInt => 10, SignedInt => 0);
-        test_add_assign!(UnsignedInt => 10, Float => 1.5, Float => 11.5);
-        test_add_assign!(UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedBigInt => u64::MAX as u128 + u64::MAX as u128);
-        test_add_assign!(UnsignedInt => 1, UnsignedInt => 2, UnsignedInt => 3);
-        test_add_assign!(SignedInt => -5, SignedInt => 10, SignedInt => 5);
-        test_add_assign!(UnsignedBigInt => 1_000_000_000_000, SignedInt => -1_000_000_000_000, SignedInt => 0);
-        test_add_assign!(UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedBigInt => u64::MAX as u128 + 1);
-        test_add_assign!(SignedInt => i64::MAX, SignedInt => 1, SignedBigInt => i64::MAX as i128 + 1);
-        test_add_assign!(UnsignedBigInt => u128::MAX, UnsignedInt => 1, Float => u128::MAX as f64 + 1.0);
-        test_add_assign!(SignedBigInt => i128::MAX, SignedInt => 1, Float => i128::MAX as f64 + 1.0);
-        test_add_assign!(UnsignedInt => 10, SignedInt => -5, SignedInt => 5);
-        test_add_assign!(UnsignedBigInt => 100, SignedBigInt => -50, SignedBigInt => 50);
-        test_add_assign!(UnsignedInt => 10, Float => 2.5, Float => 12.5);
-        test_add_assign!(SignedBigInt => -100, Float => 0.5, Float => -99.5);
-        test_add_assign!(Float => 1.1, Float => 2.2, Float => 3.3);
-        test_add_assign!(Float => -1.5, Float => 0.5, Float => -1.0);
-        test_add_assign!(UnsignedInt => 0, SignedInt => i64::MIN, SignedInt => i64::MIN);
-        test_add_assign!(SignedBigInt => i128::MAX, Float => 0.1, Float => i128::MAX as f64 + 0.1);
-        test_add_assign!(UnsignedBigInt => u128::MAX, Float => 1.0, Float => u128::MAX as f64 + 1.0);
+    fn addition() {
+        test_adds!(UnsignedInt => 200, UnsignedInt => 200, UnsignedInt);
+        test_adds!(SignedInt => -10, UnsignedInt => 10, SignedInt);
+        test_adds!(UnsignedInt => 10, Float => 1.5, Float);
+        test_adds!(UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedBigInt);
+        test_adds!(UnsignedInt => 1, UnsignedInt => 2, UnsignedInt);
+        test_adds!(SignedInt => -5, SignedInt => 10, SignedInt);
+        test_adds!(UnsignedBigInt => 1_000_000_000_000, SignedInt => -1_000_000_000_000, SignedInt);
+        test_adds!(UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedBigInt);
+        test_adds!(SignedInt => i64::MAX, SignedInt => 1, SignedBigInt);
+        test_adds!(UnsignedBigInt => u128::MAX, UnsignedInt => 1, Float);
+        test_adds!(SignedBigInt => i128::MAX, SignedInt => 1, Float);
+        test_adds!(UnsignedInt => 10, SignedInt => -5, SignedInt);
+        test_adds!(UnsignedBigInt => 100, SignedBigInt => -50, SignedBigInt);
+        test_adds!(UnsignedInt => 10, Float => 2.5, Float);
+        test_adds!(SignedBigInt => -100, Float => 0.5, Float);
+        test_adds!(Float => 1.1, Float => 2.2, Float);
+        test_adds!(Float => -1.5, Float => 0.5, Float);
+        test_adds!(UnsignedInt => 0, SignedInt => i64::MIN, SignedInt);
+        test_adds!(SignedBigInt => i128::MAX, Float => 0.1, Float);
+        test_adds!(UnsignedBigInt => u128::MAX, Float => 1.0, Float);
+    }
+
+    #[test]
+    fn subtraction() {
+        test_subs!(UnsignedInt => 200, UnsignedInt => 200, UnsignedInt);
+        test_subs!(SignedInt => -10, UnsignedInt => 10, SignedInt);
+        test_subs!(UnsignedInt => 10, UnsignedInt => 20, SignedInt);
+        test_subs!(UnsignedInt => 10, Float => 1.5, Float);
+        test_subs!(UnsignedInt => u64::MAX, UnsignedInt => u64::MAX, UnsignedInt);
+        test_subs!(UnsignedInt => 1, UnsignedInt => 2, SignedInt);
+        test_subs!(SignedInt => -5, SignedInt => 10, SignedInt);
+        test_subs!(UnsignedBigInt => 1_000_000_000_000, SignedBigInt => -1_000_000_000_000, SignedBigInt);
+        test_subs!(UnsignedInt => u64::MAX, UnsignedInt => 1, UnsignedInt);
+        test_subs!(SignedInt => i64::MAX, SignedInt => 1, SignedInt);
+        test_subs!(Float => u128::MAX as f64 + 1.0, UnsignedInt => 10, Float);
+        test_subs!(UnsignedInt => 10, SignedInt => -5, SignedInt);
+        test_subs!(UnsignedBigInt => 100, SignedBigInt => -50, SignedBigInt);
+        test_subs!(UnsignedInt => 10, Float => 2.5, Float);
+        test_subs!(SignedBigInt => -100, Float => 0.5, Float);
+        test_subs!(Float => 1.1, Float => 2.2, Float);
+        test_subs!(Float => -1.5, Float => 0.5, Float);
+        test_subs!(SignedInt => 0, SignedInt => i64::MIN, SignedBigInt);
+        test_subs!(SignedBigInt => i128::MAX, Float => 0.1, Float);
+        test_subs!(UnsignedBigInt => u128::MAX, Float => 1.0, Float);
     }
 }

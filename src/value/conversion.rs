@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use crate::value::{Value, error::Error};
 
 // ===============================================================
@@ -64,6 +66,26 @@ impl_try_from!(u128 => UnsignedBigInt);
 impl_try_from!(i64 => SignedInt);
 impl_try_from!(i128 => SignedBigInt);
 impl_try_from!(f64 => Float);
+
+// ===============================================================
+// FromStr
+// ===============================================================
+
+impl FromStr for Value {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse::<u64>()
+            .map(Self::UnsignedInt)
+            .or_else(|_| s.parse::<u128>().map(Self::UnsignedBigInt))
+            .or_else(|_| s.parse::<i64>().map(Self::SignedInt))
+            .or_else(|_| s.parse::<i128>().map(Self::SignedBigInt))
+            .or_else(|_| s.parse::<f64>().map(Self::Float))
+            .map_err(|_| Error::Parsing {
+                value: s.to_string(),
+            })
+    }
+}
 
 // ===============================================================
 // ToPrimitive
@@ -151,6 +173,15 @@ mod test {
         }};
     }
 
+    macro_rules! test_from_str {
+        ($str_val:expr => $expected_value_enum:expr) => {{
+            concat!($str_val, "");
+            let v = $str_val;
+            let r = Value::from_str(v).expect("no error for {v}");
+            assert_eq!(r, $expected_value_enum);
+        }};
+    }
+
     #[test]
     fn from() {
         test_from!(u8, u8::MAX, UnsignedInt);
@@ -181,5 +212,15 @@ mod test {
     #[should_panic]
     fn try_from_error() {
         _ = i64::try_from(Value::UnsignedInt(u64::MAX)).unwrap();
+    }
+
+    #[test]
+    fn from_str() {
+        test_from_str!("11.2" => Value::Float(11.2));
+        test_from_str!("-11.2" => Value::Float(-11.2));
+        test_from_str!("18446744073709551615" => Value::UnsignedInt(u64::MAX));
+        test_from_str!("340282366920938463463374607431768211455" => Value::UnsignedBigInt(u128::MAX));
+        test_from_str!("-9223372036854775808" => Value::SignedInt(i64::MIN));
+        test_from_str!("-170141183460469231731687303715884105728" => Value::SignedBigInt(i128::MIN));
     }
 }

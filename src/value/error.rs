@@ -2,23 +2,31 @@ use crate::value::Value;
 use std::{error, fmt};
 
 #[derive(Debug, Clone)]
-pub enum Error {
+pub enum ValueError {
     Converting { from: Value, to: String },
     Parsing { value: String },
     ImproperlyFloat,
+    Overflow,
+    Underflow,
+    DivideByZero,
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for ValueError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Converting { from, to } => write!(f, "cannot convert {:?} to {:?}", from, to),
-            Error::Parsing { value } => write!(f, "'{value}' cannot be parsed as Value"),
-            Error::ImproperlyFloat => write!(
+            ValueError::Converting { from, to } => {
+                write!(f, "cannot convert {:?} to {:?}", from, to)
+            }
+            ValueError::Parsing { value } => write!(f, "'{value}' cannot be parsed as Value"),
+            ValueError::ImproperlyFloat => write!(
                 f,
                 "attempted to perform an operation which only makes sense for integers, but value is currently a float"
             ),
+            ValueError::Overflow => write!(f, "overflow"),
+            ValueError::Underflow => write!(f, "underflow"),
+            ValueError::DivideByZero => write!(f, "attempt to divide by 0"),
         }
     }
 }
 
-impl error::Error for Error {}
+impl error::Error for ValueError {}

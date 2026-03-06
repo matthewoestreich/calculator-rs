@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::value::{Value, error::Error};
+use crate::value::{Value, error::ValueError};
 
 // ===============================================================
 // From<T>
@@ -35,11 +35,11 @@ impl_from!(f64 => Float);
 macro_rules! impl_try_from {
     ($t:ty => $variant:ident) => {
         impl TryFrom<Value> for $t {
-            type Error = Error;
+            type Error = ValueError;
             fn try_from(value: Value) -> Result<Self, Self::Error> {
                 match value {
                     Value::$variant(n) => Ok(n),
-                    other => Err(Error::Converting {
+                    other => Err(ValueError::Converting {
                         from: other,
                         to: String::from(stringify!($t)),
                     }),
@@ -47,11 +47,11 @@ macro_rules! impl_try_from {
             }
         }
         impl TryFrom<&Value> for $t {
-            type Error = Error;
+            type Error = ValueError;
             fn try_from(value: &Value) -> Result<Self, Self::Error> {
                 match value {
                     Value::$variant(n) => Ok(*n),
-                    other => Err(Error::Converting {
+                    other => Err(ValueError::Converting {
                         from: other.clone(),
                         to: String::from(stringify!($t)),
                     }),
@@ -72,7 +72,7 @@ impl_try_from!(f64 => Float);
 // ===============================================================
 
 impl FromStr for Value {
-    type Err = Error;
+    type Err = ValueError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse::<u64>()
@@ -81,7 +81,7 @@ impl FromStr for Value {
             .or_else(|_| s.parse::<i64>().map(Self::SignedInt))
             .or_else(|_| s.parse::<i128>().map(Self::SignedBigInt))
             .or_else(|_| s.parse::<f64>().map(Self::Float))
-            .map_err(|_| Error::Parsing {
+            .map_err(|_| ValueError::Parsing {
                 value: s.to_string(),
             })
     }

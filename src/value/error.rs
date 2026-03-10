@@ -9,6 +9,7 @@ pub enum ValueError {
     Overflow,
     Underflow,
     DivideByZero,
+    NegativeExponent,
 }
 
 impl fmt::Display for ValueError {
@@ -25,6 +26,7 @@ impl fmt::Display for ValueError {
             ValueError::Overflow => write!(f, "overflow"),
             ValueError::Underflow => write!(f, "underflow"),
             ValueError::DivideByZero => write!(f, "attempt to divide by 0"),
+            ValueError::NegativeExponent => write!(f, "attempt to pow using negative exponent"),
         }
     }
 }

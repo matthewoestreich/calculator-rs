@@ -1,7 +1,5 @@
-use crate::{
-    ValueError,
-    value::{Value, dispatch_operation},
-};
+use crate::{ValueError, value::Value};
+use num_traits::{Signed, ToPrimitive};
 
 impl Value {
     pub(crate) fn as_u32(self) -> Result<u32, ValueError> {
@@ -37,80 +35,51 @@ impl Value {
 
     /// Raise this value by another.
     pub fn pow(self, right: impl Into<Self>) -> Result<Self, ValueError> {
-        let rhs = right.into();
+        let exponent = right.into();
 
-        match (self, rhs) {
-            (Value::Float(a), Value::Float(b)) => Ok(Value::Float(a.powf(b))),
-            (Value::Float(a), mut b) => Ok(Value::Float(a.powf(*b.promote_to_float()))),
-            (mut a, Value::Float(b)) => Ok(Value::Float(a.promote_to_float().powf(b))),
-
-            (Value::SignedInt(a), Value::SignedInt(b)) if b >= 0 => {
-                let exp_u32 = b as u32;
-                // Try i64 first
-                if let Some(res) = a.checked_pow(exp_u32) {
-                    return Ok(Value::SignedInt(res));
-                }
-
-                let base_i128 = a as i128;
-                // Promote to i128
-                if let Some(res) = base_i128.checked_pow(exp_u32) {
-                    return Ok(Value::SignedBigInt(res));
-                }
-                // Too big for i128 → promote to float
-                let res = (base_i128 as f64).powf(b as f64);
-                Ok(Value::Float(res))
+        match (self, exponent) {
+            // Unsigned integer ^ unsigned integer
+            (Value::UnsignedInt(base), Value::UnsignedInt(exp)) => {
+                let result = base.checked_pow(exp as u32).ok_or(ValueError::Overflow)?;
+                Ok(Value::UnsignedInt(result))
+            }
+            // Signed integer ^ unsigned integer
+            (Value::SignedInt(base), Value::UnsignedInt(exp)) => {
+                let result = base.checked_pow(exp as u32).ok_or(ValueError::Overflow)?;
+                Ok(Value::SignedInt(result))
+            }
+            // UnsignedBigInt ^ UnsignedInt
+            (Value::UnsignedBigInt(base), Value::UnsignedInt(exp)) => {
+                Ok(Value::UnsignedBigInt(base.pow(exp as u32)))
+            }
+            // SignedBigInt ^ UnsignedInt
+            (Value::SignedBigInt(base), Value::UnsignedInt(exp)) => {
+                Ok(Value::SignedBigInt(base.pow(exp as u32)))
+            }
+            // Any ^ Float: promote base to f64 and compute
+            (Value::UnsignedInt(b), Value::Float(e)) => Ok(Value::Float((b as f64).powf(e))),
+            (Value::SignedInt(b), Value::Float(e)) => Ok(Value::Float((b as f64).powf(e))),
+            (Value::UnsignedBigInt(b), Value::Float(e)) => {
+                Ok(Value::Float(b.to_f64().unwrap().powf(e)))
+            }
+            (Value::SignedBigInt(b), Value::Float(e)) => {
+                Ok(Value::Float(b.to_f64().unwrap().powf(e)))
+            }
+            (Value::Float(b), Value::Float(e)) => Ok(Value::Float(b.powf(e))),
+            (Value::Float(b), Value::UnsignedInt(e)) => Ok(Value::Float(b.powi(e as i32))),
+            (Value::Float(b), Value::SignedInt(e)) => Ok(Value::Float(b.powi(e as i32))),
+            // Negative exponents for integer types
+            (Value::UnsignedInt(_), Value::SignedInt(e))
+            | (Value::SignedInt(_), Value::SignedInt(e))
+            | (Value::UnsignedBigInt(_), Value::SignedInt(e))
+            | (Value::SignedBigInt(_), Value::SignedInt(e))
+                if e < 0 =>
+            {
+                Err(ValueError::NegativeExponent)
             }
 
-            (Value::UnsignedInt(a), Value::UnsignedInt(b)) => {
-                let exp_u32 = b as u32;
-                // Try u64 first
-                if let Some(res) = a.checked_pow(exp_u32) {
-                    return Ok(Value::UnsignedInt(res));
-                }
-
-                let base_u128 = a as u128;
-                // Promote to u128
-                if let Some(res) = base_u128.checked_pow(exp_u32) {
-                    if res <= u64::MAX as u128 {
-                        return Ok(Value::UnsignedInt(res as u64));
-                    } else {
-                        return Ok(Value::UnsignedBigInt(res));
-                    }
-                }
-                // Too big for u128 → promote to float
-                let res = (base_u128 as f64).powf(b as f64);
-                Ok(Value::Float(res))
-            }
-
-            (Value::SignedBigInt(a), Value::SignedInt(b)) if b >= 0 => {
-                println!("[pow] case (Value::SignedBigInt(a), Value::SignedInt(b))");
-                let exp_u32 = b as u32;
-                if let Some(res) = a.checked_pow(exp_u32) {
-                    println!("[pow] first if");
-                    Ok(Value::SignedBigInt(res))
-                } else {
-                    println!("[pow] second if");
-                    let mut self_clone = self;
-                    self_clone.promote_to_float();
-                    //Ok(Value::Float(a.promote_to_float().powf(b as f64)))
-                    self_clone.pow(rhs)
-                }
-            }
-            (Value::UnsignedBigInt(a), Value::UnsignedInt(b)) => {
-                let exp_u32 = b as u32;
-                if let Some(res) = a.checked_pow(exp_u32) {
-                    Ok(Value::UnsignedBigInt(res))
-                } else {
-                    Ok(Value::Float(a.to_f64().unwrap().powf(b as f64)))
-                }
-            }
-
-            (mut a, mut b) => {
-                println!("[pow] catch-all");
-                Ok(Value::Float(
-                    a.promote_to_float().powf(*b.promote_to_float()),
-                ))
-            }
+            // Everything else is unsupported
+            _ => Err(ValueError::Overflow),
         }
     }
 
@@ -356,14 +325,14 @@ mod test {
     }
 
     #[rstest]
-    #[case(10, 2, 5, Order::UnsignedInt)]
-    #[case(10_i128, 2, 5, Order::UnsignedInt)]
-    #[case(10_u64, 2, 5, Order::UnsignedInt)]
-    #[case(-10_i64, 2, -5_i64, Order::SignedInt)]
-    #[case(-10_i128, 2, -5_i64, Order::SignedInt)]
-    #[case(-i128::MAX, 2, -85070591730234615865843651857942052863_i128, Order::SignedBigInt)]
-    #[case(10.5, 2, 5, Order::UnsignedInt)]
-    #[case(-f64::MAX, 2, -8.988465674311579e307, Order::Float)]
+    #[case::trunc_div_1(10, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_2(10_i128, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_3(10_u64, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_4(-10_i64, 2, -5_i64, Order::SignedInt)]
+    #[case::trunc_div_5(-10_i128, 2, -5_i64, Order::SignedInt)]
+    #[case::trunc_div_6(-i128::MAX, 2, -85070591730234615865843651857942052863_i128, Order::SignedBigInt)]
+    #[case::trunc_div_7(10.5, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_8(-f64::MAX, 2, -8.988465674311579e307, Order::Float)]
     fn trunc_div(
         #[case] value: impl Into<Value>,
         #[case] div_by: impl Into<Value>,
@@ -372,9 +341,14 @@ mod test {
     ) {
         let v: Value = value.into();
         let r = v.trunc_div(div_by);
-        assert_eq!(r.order(), expect_order);
+        assert_eq!(
+            r.order(),
+            expect_order,
+            "expected {expect_order:?} got {:?}",
+            r.order()
+        );
         let expect_value = expect_value.into();
-        assert_eq!(r, expect_value);
+        assert_eq!(r, expect_value, "expected {expect_value:?} got {r:?}");
     }
 
     #[rstest]

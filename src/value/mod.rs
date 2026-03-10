@@ -3,7 +3,7 @@ pub mod comparison;
 pub mod conversion;
 pub mod error;
 pub mod fmt;
-//pub mod numeric;
+pub mod numeric;
 
 pub(crate) mod dispatch_operation;
 pub(crate) use dispatch_operation::*;

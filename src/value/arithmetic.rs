@@ -354,10 +354,6 @@ impl Neg for Value {
                 self.promote();
                 self.neg()
             }
-            /*Self::SignedBigInt(n) if n == i128::MIN => {
-                self.promote();
-                self.neg()
-            }*/
             // everything else is simple negation
             Self::SignedInt(n) => (-n).into(),
             Self::SignedBigInt(n) => (-n).into(),
@@ -372,6 +368,17 @@ mod test {
     use crate::value::Order;
     use num_bigint::{BigInt, BigUint};
     use rstest::*;
+
+    #[rstest]
+    #[case::neg_1(Value::UnsignedInt(10), Order::SignedInt)]
+    #[case::neg_2(Value::UnsignedBigInt(10_u32.into()), Order::SignedInt)] // Small enough to fit in SignedInt (i128)
+    #[case::neg_3(Value::UnsignedBigInt(u128::MAX.into()), Order::SignedBigInt)]
+    #[case::neg_4(Value::SignedInt(10), Order::SignedInt)]
+    #[case::neg_4(Value::SignedInt(-10), Order::SignedInt)]
+    fn negation(#[case] value: Value, #[case] expect: Order) {
+        let result = -value;
+        assert_eq!(result.order(), expect, "expected {expect:?} got {result:?}");
+    }
 
     #[rstest]
     #[case::add_1(
@@ -469,7 +476,6 @@ mod test {
             "left = {left:?} right = {right:?} | expected {expect:?} got {r:?}"
         );
         left += &right;
-        println!("right={right:?}");
         assert_eq!(
             left.order(),
             expect,

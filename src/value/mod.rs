@@ -29,23 +29,17 @@ impl Value {
 
     pub(crate) fn promote(&mut self) {
         *self = match self.clone() {
-            Value::UnsignedInt(v) => {
-                if v <= i128::MAX as u128 {
-                    Value::SignedInt(v as i128)
+            Value::UnsignedInt(n) => Value::UnsignedBigInt(n.into()),
+            Value::UnsignedBigInt(n) => {
+                if let Some(v) = n.to_i128() {
+                    Value::SignedInt(v)
                 } else {
-                    Value::UnsignedBigInt(BigUint::from(v))
+                    Value::SignedBigInt(n.into())
                 }
             }
-            Value::SignedInt(v) => {
-                if v >= 0 {
-                    Value::UnsignedBigInt(BigUint::from(v as u128))
-                } else {
-                    Value::SignedBigInt(BigInt::from(v))
-                }
-            }
-            Value::UnsignedBigInt(v) => Value::SignedBigInt(BigInt::from(v)),
-            Value::SignedBigInt(v) => Value::Float(v.to_f64().unwrap_or(f64::INFINITY)),
-            Value::Float(v) => Value::Float(v),
+            Value::SignedInt(n) => Value::SignedBigInt(n.into()),
+            Value::SignedBigInt(n) => Value::Float(n.to_f64().unwrap_or(f64::INFINITY)),
+            Value::Float(n) => Value::Float(n),
         };
     }
 
@@ -123,8 +117,8 @@ impl Value {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Order {
     UnsignedInt,
-    SignedInt,
     UnsignedBigInt,
+    SignedInt,
     SignedBigInt,
     Float,
 }
@@ -155,10 +149,24 @@ impl From<&Value> for Order {
 
 #[cfg(test)]
 mod test {
+    use super::Value;
     use super::*;
     use rstest::*;
 
     #[rstest]
-    #[case(10_u8)]
-    fn promotion(#[case] value: impl Into<Value>) {}
+    #[case::promotion_1(Value::UnsignedInt(u128::MAX), Order::UnsignedBigInt)]
+    #[case::promotion_2(Value::UnsignedBigInt(u128::MAX.into()), Order::SignedBigInt)]
+    #[case::promotion_unsignedbigint_that_fits_in_unsignedint(Value::UnsignedBigInt((i128::MAX as u128).into()), Order::SignedInt)]
+    #[case::promotion_3(Value::UnsignedInt((i128::MAX - 1) as u128), Order::UnsignedBigInt)]
+    #[case::promotion_4(Value::UnsignedInt(u128::MAX), Order::UnsignedBigInt)]
+    #[case::promotion_signedbigint_to_float(Value::SignedBigInt(i128::MAX.into()), Order::Float)] // this should realistically never happen
+    fn promotion(#[case] value: Value, #[case] expected: Order) {
+        let mut v = value.clone(); // Clone so we can write the original value in error if needed
+        v.promote();
+        assert_eq!(
+            v.order(),
+            expected,
+            "expected {value:?} => to promote to => {expected:?} but got = {v:?}"
+        );
+    }
 }

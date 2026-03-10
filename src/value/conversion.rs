@@ -1,8 +1,18 @@
+use crate::value::{Order, Value, error::ValueError};
+use num_bigint::{BigInt, BigUint};
 use std::str::FromStr;
 
-use num_bigint::{BigInt, BigUint};
-
-use crate::value::{Value, error::ValueError};
+impl From<Order> for Value {
+    fn from(order: Order) -> Self {
+        match order {
+            Order::UnsignedInt => Value::UnsignedInt(u128::default()),
+            Order::UnsignedBigInt => Value::UnsignedBigInt(BigUint::default()),
+            Order::SignedInt => Value::SignedInt(i128::default()),
+            Order::SignedBigInt => Value::SignedBigInt(BigInt::default()),
+            Order::Float => Value::Float(f64::default()),
+        }
+    }
+}
 
 // ===============================================================
 // From<T>

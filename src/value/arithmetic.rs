@@ -105,6 +105,7 @@ impl CheckedMaths for BigUint {
     }
 }
 
+#[allow(clippy::clone_on_copy)]
 impl<Rhs> AddAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -147,6 +148,7 @@ impl<'a> Add<&'a Value> for &Value {
     }
 }
 
+#[allow(clippy::clone_on_copy)]
 impl<Rhs> SubAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -179,6 +181,7 @@ where
     }
 }
 
+#[allow(clippy::clone_on_copy)]
 impl<Rhs> MulAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -206,6 +209,7 @@ where
     }
 }
 
+#[allow(clippy::clone_on_copy)]
 impl<Rhs> DivAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -233,6 +237,7 @@ where
     }
 }
 
+#[allow(clippy::clone_on_copy)]
 impl<Rhs> RemAssign<Rhs> for Value
 where
     Rhs: Into<Value>,
@@ -293,79 +298,89 @@ mod test {
     use rstest::*;
 
     #[rstest]
-    #[case(
+    #[case::add_1(
         Value::UnsignedInt(u128::MAX),
         Value::UnsignedInt(u128::MAX),
         Order::UnsignedBigInt
     )]
-    #[case(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
-    #[case(
+    #[case::add_2(Value::UnsignedInt(200), Value::UnsignedInt(200), Order::UnsignedInt)]
+    #[case::add_3(
         Value::SignedInt(-10),
         Value::UnsignedInt(10),
         Order::SignedInt
     )]
-    #[case(Value::UnsignedInt(10), Value::Float(1.5), Order::Float)]
+    #[case::add_4(Value::UnsignedInt(10), Value::Float(1.5), Order::Float)]
     #[case::overflow_u128(
         Value::UnsignedInt(u128::MAX),
         Value::UnsignedInt(u128::MAX),
         Order::UnsignedBigInt
     )]
-    #[case(Value::UnsignedInt(1), Value::UnsignedInt(2), Order::UnsignedInt)]
-    #[case(
+    #[case::overflow_u128_b(
+        Value::SignedBigInt(i128::MAX.into()),
+        Value::UnsignedBigInt(u128::MAX.into()),
+        Order::SignedBigInt
+    )]
+    #[case::add_5(Value::UnsignedInt(1), Value::UnsignedInt(2), Order::UnsignedInt)]
+    #[case::add_6(
         Value::SignedInt(-5),
         Value::SignedInt(10),
         Order::SignedInt
     )]
-    #[case(
-        Value::UnsignedBigInt(BigUint::from(1_000_000_000_000_u64)),
+    #[case::add_7(
+        Value::UnsignedBigInt(1_000_000_000_000_u128.into()),
         Value::SignedInt(-1_000_000_000_000),
         Order::SignedInt
     )]
-    #[case(
+    #[case::add_8(
         Value::UnsignedInt(u128::MAX),
         Value::UnsignedInt(1),
         Order::UnsignedBigInt
     )]
-    #[case(Value::SignedInt(i128::MAX), Value::SignedInt(1), Order::SignedBigInt)]
-    #[case(
-        Value::UnsignedBigInt(BigUint::from(u128::MAX)),
+    #[case::add_9(Value::SignedInt(i128::MAX), Value::SignedInt(1), Order::SignedBigInt)]
+    #[case::add_10(
+        Value::UnsignedBigInt(u128::MAX.into()),
         Value::UnsignedInt(1),
         Order::UnsignedBigInt
     )]
-    #[case(
-        Value::SignedBigInt(BigInt::from(i128::MAX)),
+    #[case::add_10_b(
+        Value::SignedBigInt(i128::MAX.into()),
+        Value::UnsignedInt(1),
+        Order::SignedBigInt
+    )]
+    #[case::add_11(
+        Value::SignedBigInt(i128::MAX.into()),
         Value::SignedInt(1),
         Order::SignedBigInt
     )]
-    #[case(
+    #[case::add_12(
         Value::UnsignedInt(10),
         Value::SignedInt(-5),
         Order::SignedInt
     )]
-    #[case(
-        Value::UnsignedBigInt(BigUint::from(100_u32)),
+    #[case::add_13(
+        Value::UnsignedBigInt(100_u32.into()),
         Value::SignedBigInt(BigInt::from(-50)),
         Order::SignedBigInt
     )]
-    #[case(Value::UnsignedInt(10), Value::Float(2.5), Order::Float)]
-    #[case(
-        Value::SignedBigInt(BigInt::from(-100)),
+    #[case::add_14(Value::UnsignedInt(10), Value::Float(2.5), Order::Float)]
+    #[case::add_15(
+        Value::SignedBigInt((-100_i32).into()),
         Value::Float(0.5),
         Order::Float
     )]
-    #[case(Value::Float(1.1), Value::Float(2.2), Order::Float)]
-    #[case(
+    #[case::add_16(Value::Float(1.1), Value::Float(2.2), Order::Float)]
+    #[case::add_17(
         Value::Float(-1.5),
         Value::Float(0.5),
         Order::Float
     )]
-    #[case(Value::UnsignedInt(0), Value::SignedInt(i128::MIN), Order::SignedInt)]
-    #[case(
-        Value::SignedBigInt(BigInt::from(i128::MAX)),
+    #[case::add_18(Value::UnsignedInt(0), Value::SignedInt(i128::MIN), Order::SignedInt)]
+    #[case::add_19(
+        Value::SignedBigInt(i128::MAX.into()),
         Value::Float(0.1),
         Order::Float
     )]
-    #[case::last(
+    #[case::add_20(
         Value::UnsignedBigInt(BigUint::from(u128::MAX)),
         Value::Float(1.0),
         Order::Float

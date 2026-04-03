@@ -1,4 +1,5 @@
 use crate::{ValueError, value::Value};
+use num_traits::{Signed, ToPrimitive};
 
 impl Value {
     pub(crate) fn as_u32(self) -> Result<u32, ValueError> {
@@ -34,35 +35,51 @@ impl Value {
 
     /// Raise this value by another.
     pub fn pow(self, right: impl Into<Self>) -> Result<Self, ValueError> {
-        let right = right.into();
-        match self {
-            Self::UnsignedInt(n) => {
-                let right = right.as_u32()?;
-                Ok(n.pow(right).into())
+        let exponent = right.into();
+
+        match (self, exponent) {
+            // Unsigned integer ^ unsigned integer
+            (Value::UnsignedInt(base), Value::UnsignedInt(exp)) => {
+                let result = base.checked_pow(exp as u32).ok_or(ValueError::Overflow)?;
+                Ok(Value::UnsignedInt(result))
             }
-            Self::UnsignedBigInt(n) => {
-                let right = right.as_u32()?;
-                Ok(n.pow(right).into())
+            // Signed integer ^ unsigned integer
+            (Value::SignedInt(base), Value::UnsignedInt(exp)) => {
+                let result = base.checked_pow(exp as u32).ok_or(ValueError::Overflow)?;
+                Ok(Value::SignedInt(result))
             }
-            Self::SignedInt(n) => {
-                let right = right.as_u32()?;
-                Ok(n.pow(right).into())
+            // UnsignedBigInt ^ UnsignedInt
+            (Value::UnsignedBigInt(base), Value::UnsignedInt(exp)) => {
+                Ok(Value::UnsignedBigInt(base.pow(exp as u32)))
             }
-            Self::SignedBigInt(n) => {
-                let right = right.as_u32()?;
-                Ok(n.pow(right).into())
+            // SignedBigInt ^ UnsignedInt
+            (Value::SignedBigInt(base), Value::UnsignedInt(exp)) => {
+                Ok(Value::SignedBigInt(base.pow(exp as u32)))
             }
-            Self::Float(n) => {
-                if let Self::Float(e) = right {
-                    Ok(n.powf(e).into())
-                } else {
-                    let right = right
-                        .as_u32()?
-                        .try_into()
-                        .map_err(|_| ValueError::Overflow)?;
-                    Ok(n.powi(right).into())
-                }
+            // Any ^ Float: promote base to f64 and compute
+            (Value::UnsignedInt(b), Value::Float(e)) => Ok(Value::Float((b as f64).powf(e))),
+            (Value::SignedInt(b), Value::Float(e)) => Ok(Value::Float((b as f64).powf(e))),
+            (Value::UnsignedBigInt(b), Value::Float(e)) => {
+                Ok(Value::Float(b.to_f64().unwrap().powf(e)))
             }
+            (Value::SignedBigInt(b), Value::Float(e)) => {
+                Ok(Value::Float(b.to_f64().unwrap().powf(e)))
+            }
+            (Value::Float(b), Value::Float(e)) => Ok(Value::Float(b.powf(e))),
+            (Value::Float(b), Value::UnsignedInt(e)) => Ok(Value::Float(b.powi(e as i32))),
+            (Value::Float(b), Value::SignedInt(e)) => Ok(Value::Float(b.powi(e as i32))),
+            // Negative exponents for integer types
+            (Value::UnsignedInt(_), Value::SignedInt(e))
+            | (Value::SignedInt(_), Value::SignedInt(e))
+            | (Value::UnsignedBigInt(_), Value::SignedInt(e))
+            | (Value::SignedBigInt(_), Value::SignedInt(e))
+                if e < 0 =>
+            {
+                Err(ValueError::NegativeExponent)
+            }
+
+            // Everything else is unsupported
+            _ => Err(ValueError::Overflow),
         }
     }
 
@@ -294,35 +311,65 @@ impl Value {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::value::Order;
+    use rstest::*;
 
-    #[test]
-    fn as_u32() {
-        assert_eq!(Value::UnsignedInt(10).as_u32().unwrap(), 10_u32);
-        assert_eq!(Value::UnsignedBigInt(10).as_u32().unwrap(), 10_u32);
-        assert_eq!(Value::SignedInt(10).as_u32().unwrap(), 10_u32);
-        assert_eq!(Value::SignedBigInt(10).as_u32().unwrap(), 10_u32);
-        assert_eq!(Value::Float(10.0).as_u32().unwrap(), 10_u32);
+    #[rstest]
+    #[case(10, 10_u32)]
+    #[case(10.0, 10_u32)]
+    #[case(10_i128, 10_u32)]
+    fn as_u32(#[case] value: impl Into<Value>, #[case] expect: u32) {
+        let v: Value = value.into();
+        let r = v.as_u32().unwrap();
+        assert_eq!(r, expect);
     }
 
-    #[test]
-    fn trunc_div() {
-        assert_eq!(Value::UnsignedInt(10).trunc_div(2), Value::UnsignedInt(5));
+    #[rstest]
+    #[case::trunc_div_1(10, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_2(10_i128, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_3(10_u64, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_4(-10_i64, 2, -5_i64, Order::SignedInt)]
+    #[case::trunc_div_5(-10_i128, 2, -5_i64, Order::SignedInt)]
+    #[case::trunc_div_6(-i128::MAX, 2, -85070591730234615865843651857942052863_i128, Order::SignedBigInt)]
+    #[case::trunc_div_7(10.5, 2, 5, Order::UnsignedInt)]
+    #[case::trunc_div_8(-f64::MAX, 2, -8.988465674311579e307, Order::Float)]
+    fn trunc_div(
+        #[case] value: impl Into<Value>,
+        #[case] div_by: impl Into<Value>,
+        #[case] expect_value: impl Into<Value>,
+        #[case] expect_order: Order,
+    ) {
+        let v: Value = value.into();
+        let r = v.trunc_div(div_by);
         assert_eq!(
-            Value::UnsignedBigInt(10).trunc_div(2),
-            Value::UnsignedInt(5)
+            r.order(),
+            expect_order,
+            "expected {expect_order:?} got {:?}",
+            r.order()
         );
-        assert_eq!(Value::SignedInt(10).trunc_div(2), Value::UnsignedInt(5));
-        assert_eq!(Value::SignedInt(-10).trunc_div(2), Value::SignedInt(-5));
-        assert_eq!(Value::SignedBigInt(10).trunc_div(2), Value::UnsignedInt(5));
-        assert_eq!(Value::SignedBigInt(-10).trunc_div(2), Value::SignedInt(-5));
-        assert_eq!(
-            Value::SignedBigInt(-i128::MAX).trunc_div(2),
-            Value::SignedBigInt(-85070591730234615865843651857942052863)
-        );
-        assert_eq!(Value::Float(10.5).trunc_div(2), Value::UnsignedInt(5));
-        assert_eq!(
-            Value::Float(-f64::MAX).trunc_div(2),
-            Value::Float(-8.988465674311579e307)
-        );
+        let expect_value = expect_value.into();
+        assert_eq!(r, expect_value, "expected {expect_value:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::pow1(10, 2, 100)]
+    #[case::pow2(i64::MAX, u32::MAX, f64::INFINITY)]
+    #[case::pow3(
+        4611686018427387903_i64,
+        2,
+        21267647932558653957237540927630737409_i128
+    )]
+    #[case::pow4(i128::MAX, 2, 2.894802230932905e76)]
+    #[case::pow5(i128::MAX, 3, 4.92525077454931e114)]
+    fn pow(
+        #[case] value: impl Into<Value>,
+        #[case] raise_to: impl Into<Value>,
+        #[case] expect_value: impl Into<Value>,
+    ) {
+        let v: Value = value.into();
+        println!("v = {v:?}");
+        let r = v.pow(raise_to).unwrap();
+        let expect_value = expect_value.into();
+        assert_eq!(r, expect_value, "expected {expect_value:?} got {r:?}");
     }
 }

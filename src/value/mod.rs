@@ -6,45 +6,41 @@ pub mod fmt;
 pub mod numeric;
 
 pub(crate) mod dispatch_operation;
-use std::cmp::Ordering;
-
 pub(crate) use dispatch_operation::*;
 
-use crate::value::conversion::ToPrimitive as _;
+use num_bigint::{BigInt, BigUint};
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::cmp::Ordering;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Value {
-    UnsignedInt(u64),
-    UnsignedBigInt(u128),
-    SignedInt(i64),
-    SignedBigInt(i128),
+    UnsignedInt(u128),
+    UnsignedBigInt(BigUint),
+    SignedInt(i128),
+    SignedBigInt(BigInt),
     Float(f64),
 }
 
 impl Value {
     /// Get the order of this value
     pub(crate) fn order(&self) -> Order {
-        Order::from(*self)
+        Order::from(self)
     }
 
     pub(crate) fn promote(&mut self) {
-        *self = match *self {
-            Value::UnsignedInt(n) => Self::UnsignedBigInt(n as _),
+        *self = match self.clone() {
+            Value::UnsignedInt(n) => Value::UnsignedBigInt(n.into()),
             Value::UnsignedBigInt(n) => {
-                const SI_MAX: u128 = i64::MAX as _;
-                const SBI_MIN: u128 = SI_MAX + 1;
-                const SBI_MAX: u128 = i128::MAX as _;
-
-                match n {
-                    0..=SI_MAX => Self::SignedInt(n as _),
-                    SBI_MIN..=SBI_MAX => Self::SignedBigInt(n as _),
-                    _ => Self::Float(n.to_f64().expect("all u128 convert to f64")),
+                if let Some(v) = n.to_i128() {
+                    Value::SignedInt(v)
+                } else {
+                    Value::SignedBigInt(n.into())
                 }
             }
-            Value::SignedInt(n) => Self::SignedBigInt(n as _),
-            Value::SignedBigInt(n) => Self::Float(n.to_f64().expect("all i128 convert to f64")),
-            Value::Float(n) => Self::Float(n),
-        }
+            Value::SignedInt(n) => Value::SignedBigInt(n.into()),
+            Value::SignedBigInt(n) => Value::Float(n.to_f64().unwrap_or(f64::INFINITY)),
+            Value::Float(n) => Value::Float(n),
+        };
     }
 
     /// Promote this value until it is signed, according to its value.
@@ -57,11 +53,11 @@ impl Value {
     /// Promote this value until it is a float.
     pub(crate) fn promote_to_float(&mut self) -> &mut f64 {
         // there is no case where an integer value produces NaN when converted to a float
-        *self = match *self {
+        *self = match self.clone() {
             Value::UnsignedInt(n) => (n as f64).into(),
-            Value::UnsignedBigInt(n) => (n as f64).into(),
+            Value::UnsignedBigInt(n) => (n.to_f64()).expect("no error").into(),
             Value::SignedInt(n) => (n as f64).into(),
-            Value::SignedBigInt(n) => (n as f64).into(),
+            Value::SignedBigInt(n) => (n.to_f64()).expect("no error").into(),
             Value::Float(n) => n.into(),
         };
         let Self::Float(f) = self else {
@@ -72,46 +68,34 @@ impl Value {
 
     /// Demote this value to the narrowest valid container type
     pub(crate) fn demote(&mut self) {
-        const ZERO: f64 = 0.0;
-        const UI_MAX: f64 = u64::MAX as _;
-        const UBI_MAX: f64 = u128::MAX as _;
-        const SI_MIN: f64 = i64::MIN as _;
-        const SI_MAX: f64 = i64::MAX as _;
-        const SBI_MIN: f64 = i128::MIN as _;
-        const SBI_MAX: f64 = i128::MAX as _;
-
-        let value = *self.clone().promote_to_float();
-        debug_assert!(
-            value.fract().abs() < f64::EPSILON,
-            "we should never demote values not already known to be integral"
-        );
-
-        let narrowest_order = [
-            (ZERO..=UI_MAX, Order::UnsignedInt),
-            (ZERO..=UBI_MAX, Order::UnsignedBigInt),
-            (SI_MIN..=SI_MAX, Order::SignedInt),
-            (SBI_MIN..=SBI_MAX, Order::SignedBigInt),
-        ]
-        .into_iter()
-        .find_map(|(range, order)| range.contains(&value).then_some(order))
-        .unwrap_or(Order::Float);
-
-        // rhs isn't really necessary, except structurally, for the `dispatch_operation` macro
-        // maybe it would just vanish under optimization?
-        let mut rhs = *self;
-
-        *self = dispatch_operation!(self, rhs, n, |_rhs| {
-            // due to the nature of the macro we're 100% going to perform at least one unnecessary
-            // cast in every expansion branch of this macro; can't be helped
-            #[expect(clippy::unnecessary_cast)]
-            match narrowest_order {
-                Order::UnsignedInt => (*n as u64).into(),
-                Order::UnsignedBigInt => (*n as u128).into(),
-                Order::SignedInt => (*n as i64).into(),
-                Order::SignedBigInt => (*n as i128).into(),
-                Order::Float => (*n as f64).into(),
+        *self = match self.clone() {
+            Value::UnsignedBigInt(n) => {
+                if let Some(v) = n.to_u128() {
+                    Value::UnsignedInt(v)
+                } else {
+                    Value::UnsignedBigInt(n)
+                }
             }
-        });
+            Value::SignedBigInt(n) => {
+                if let Some(v) = n.to_i128() {
+                    Value::SignedInt(v)
+                } else {
+                    Value::SignedBigInt(n)
+                }
+            }
+            Value::Float(f) if f.fract() == 0.0 => {
+                if let Some(bi) = num_bigint::BigInt::from_f64(f) {
+                    if let Some(v) = bi.to_i128() {
+                        Value::SignedInt(v)
+                    } else {
+                        Value::SignedBigInt(bi)
+                    }
+                } else {
+                    Value::Float(f)
+                }
+            }
+            other => other,
+        };
     }
 
     /// Find the minimum compatible order for `self` and `other` by promoting the lesser until they match.
@@ -160,5 +144,29 @@ impl From<&Value> for Order {
             Value::SignedBigInt(_) => Self::SignedBigInt,
             Value::Float(_) => Self::Float,
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Value;
+    use super::*;
+    use rstest::*;
+
+    #[rstest]
+    #[case::promotion_1(Value::UnsignedInt(u128::MAX), Order::UnsignedBigInt)]
+    #[case::promotion_2(Value::UnsignedBigInt(u128::MAX.into()), Order::SignedBigInt)]
+    #[case::promotion_unsignedbigint_that_fits_in_unsignedint(Value::UnsignedBigInt((i128::MAX as u128).into()), Order::SignedInt)]
+    #[case::promotion_3(Value::UnsignedInt((i128::MAX - 1) as u128), Order::UnsignedBigInt)]
+    #[case::promotion_4(Value::UnsignedInt(u128::MAX), Order::UnsignedBigInt)]
+    #[case::promotion_signedbigint_to_float(Value::SignedBigInt(i128::MAX.into()), Order::Float)] // this should realistically never happen
+    fn promotion(#[case] value: Value, #[case] expected: Order) {
+        let mut v = value.clone(); // Clone so we can write the original value in error if needed
+        v.promote();
+        assert_eq!(
+            v.order(),
+            expected,
+            "expected {value:?} => to promote to => {expected:?} but got = {v:?}"
+        );
     }
 }

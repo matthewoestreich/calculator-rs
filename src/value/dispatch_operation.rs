@@ -19,35 +19,30 @@ macro_rules! dispatch_operation {
             $rhs.order(),
             "orders must match after match_orders"
         );
-
         match $lhs {
-            Value::UnsignedInt(n) => {
-                let rhs = u64::try_from($rhs).expect("orders must match");
-                let $n = n;
-                $op(rhs)
-            }
-            Value::UnsignedBigInt(n) => {
+            Value::UnsignedInt($n) => {
                 let rhs = u128::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
-            Value::SignedInt(n) => {
-                let rhs = i64::try_from($rhs).expect("orders must match");
-                let $n = n;
+            Value::UnsignedBigInt($n) => {
+                let rhs = num_bigint::BigUint::try_from($rhs).expect("orders must match");
                 $op(rhs)
             }
-            Value::SignedBigInt(n) => {
+            Value::SignedInt($n) => {
                 let rhs = i128::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
-            Value::Float(n) => {
+            Value::SignedBigInt($n) => {
+                let rhs = num_bigint::BigInt::try_from($rhs).expect("orders must match");
+                $op(rhs)
+            }
+            Value::Float($n) => {
                 let rhs = f64::try_from($rhs).expect("orders must match");
-                let $n = n;
                 $op(rhs)
             }
         }
     }};
+    // INTS variant for operations returning Result<Value, Error>
     (INTS: $lhs:expr, $rhs:expr, $n:ident, $op:expr) => {{
         $lhs.match_orders(&mut $rhs);
         debug_assert_eq!(

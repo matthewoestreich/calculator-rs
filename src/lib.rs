@@ -25,37 +25,38 @@ fn eval_shunting_yard(rpn: &str) -> Result<Value, CalculatorError> {
         println!("eval token : {token:?}");
         if let Ok(v) = Value::from_str(token) {
             stack.push(v);
-        } else {
-            // Order matters here! 'b' must come before 'a'!
-            let b = stack.pop().expect("stack not empty");
-            let a = stack.pop().expect("stack not empty");
-
-            match token {
-                "+" => {
-                    let result = &a + &b;
-                    println!("add : a = {a:?} + b = {b:?} = {result:?}");
-                    stack.push(result);
-                }
-                "-" => {
-                    let result = &a - &b;
-                    println!("sub : a = {a:?} - b = {b:?} = {result:?}");
-                    stack.push(result);
-                }
-                "*" | "x" => {
-                    let result = &a * &b;
-                    println!("mul : a = {a:?} * b = {b:?} = {result:?}");
-                    stack.push(result);
-                }
-                "/" => {
-                    let result = &a / &b;
-                    println!("div : a = {a:?} / b = {b:?} = {result:?}");
-                    stack.push(result);
-                }
-
-                "^" => stack.push(a.pow(b)?),
-                _ => {}
-            };
+            continue;
         }
+
+        // Order matters here! 'b' must come before 'a'!
+        let b = stack.pop().ok_or(CalculatorError::InvalidExpression)?;
+        let a = stack.pop().ok_or(CalculatorError::InvalidExpression)?;
+
+        match token {
+            "+" => {
+                let result = &a + &b;
+                println!("add : a = {a:?} + b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "-" => {
+                let result = &a - &b;
+                println!("sub : a = {a:?} - b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "*" | "x" => {
+                let result = &a * &b;
+                println!("mul : a = {a:?} * b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "/" => {
+                let result = &a / &b;
+                println!("div : a = {a:?} / b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+
+            "^" => stack.push(a.pow(b)?),
+            _ => {}
+        };
     }
 
     stack

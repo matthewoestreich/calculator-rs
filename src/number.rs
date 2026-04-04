@@ -56,6 +56,15 @@ macro_rules! impl_number_from {
                 Number::$variant($big_kind::from(value))
             }
         }
+
+        impl From<&$t> for Number
+        where
+            $t: Copy,
+        {
+            fn from(value: &$t) -> Self {
+                Number::$variant($big_kind::from(*value))
+            }
+        }
     };
 }
 
@@ -70,6 +79,32 @@ impl_number_from!(i32 => Int => BigInt);
 impl_number_from!(i64 => Int => BigInt);
 impl_number_from!(i128 => Int => BigInt);
 impl_number_from!(f64 => Float => BigFloat);
+
+impl From<BigFloat> for Number {
+    fn from(value: BigFloat) -> Self {
+        Number::Float(value)
+    }
+}
+
+/// Clones the value!!
+impl From<&BigFloat> for Number {
+    fn from(value: &BigFloat) -> Self {
+        Number::Float(value.clone())
+    }
+}
+
+impl From<BigInt> for Number {
+    fn from(value: BigInt) -> Self {
+        Number::Int(value)
+    }
+}
+
+/// Clones the value!!
+impl From<&BigInt> for Number {
+    fn from(value: &BigInt) -> Self {
+        Number::Int(value.clone())
+    }
+}
 
 // ===========================================================================================
 // ========================== FromStr ========================================================
@@ -144,7 +179,8 @@ where
 
         *self = match (&self, &rhs) {
             (Number::Float(x), Number::Float(y)) => {
-                Number::Float(x.div(y, 4096, RoundingMode::None))
+                let precision = x.precision().map_or(128, |prec| prec.max(128));
+                Number::Float(x.div(y, precision, RoundingMode::None))
             }
             (Number::Int(x), Number::Int(y)) => {
                 if x % y == BigInt::ZERO {
@@ -152,10 +188,7 @@ where
                 } else {
                     let l = BigFloat::from_str(&x.to_string()).expect("[div] BigFloat from BigInt");
                     let r = BigFloat::from_str(&y.to_string()).expect("[div] BigFloat from BigInt");
-                    println!("l={l} | r={r}");
-                    let result = Number::Float(l.div(&r, 4096, RoundingMode::None));
-                    println!("    result = {result}");
-                    result
+                    Number::Float(l.div(&r, (x.bits() as usize).max(128), RoundingMode::None))
                 }
             }
             _ => unreachable!("we know orders match"),
@@ -184,7 +217,7 @@ where
 impl<'a> Div<&'a Number> for &Number {
     type Output = Number;
 
-    fn div(self, rhs: &'a Number) -> Number {
+    fn div(self, rhs: &'a Number) -> Self::Output {
         let mut lhs = self.clone();
         lhs /= rhs.clone();
         lhs
@@ -226,24 +259,62 @@ impl From<&Number> for NumberOrder {
 #[cfg(test)]
 mod test {
     use super::*;
-    use astro_float::Consts;
-    use astro_float::Radix;
-    use astro_float::RoundingMode;
 
     #[test]
-    fn astrofoo() {
-        let mut cc = Consts::new().unwrap();
-        let bf = BigFloat::parse("0.5", Radix::Dec, 128, RoundingMode::ToEven, &mut cc);
-        println!("{}", scientific_to_decimal(&bf.to_string()));
+    // If two integers div produces a decimal, output should be Number::Float
+    fn div_result_is_float() {
+        let x = Number::Int(1.into());
+        let y = Number::Int(2.into());
+        let r = x / y;
+        let expected = BigFloat::from_f64(0.5, 128);
+        match r {
+            Number::Int(_) => panic!("expected result to be Float"),
+            Number::Float(big_float) => {
+                println!("result precision = {}", big_float.precision().unwrap());
+                assert_eq!(big_float, expected, "expected {expected} got {big_float}");
+            }
+        }
     }
 
     #[test]
-    fn numberfoo() {
+    fn div_int_by_float() {
         let x = Number::Int(1.into());
-        let y = Number::Int(2.into());
-        let expected = Number::Float(0.5.into());
+        let y = Number::Float(2.2.into());
         let r = x / y;
-        println!("result = {r}");
-        //assert_eq!(r, expected, "expected {expected:?} got {r:?}");
+        match &r {
+            Number::Int(_) => panic!("expected result to be Float"),
+            Number::Float(big_float) => {
+                #[allow(clippy::excessive_precision)]
+                let expected =
+                    BigFloat::from_str("0.45454545454545450875295786363119170974").unwrap();
+
+                println!("result precision = {}", big_float.precision().unwrap());
+
+                assert_eq!(
+                    big_float,
+                    &expected,
+                    "expected {} got {big_float}",
+                    expected //Number::from(&expected)
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn very_large_ints() {
+        let an = BigInt::from_str(
+            "57896044618658097711785492504343953926634992332820282019728792003956564819968",
+        )
+        .unwrap();
+        let a = Number::Int(an);
+        let b = Number::Int((-1).into());
+        let r = a / b;
+        match r {
+            Number::Int(big_int) => println!(
+                "got Number::Int = {big_int} with {} bits of precision",
+                big_int.bits()
+            ),
+            Number::Float(big_float) => println!("got Number::Float = {big_float}"),
+        }
     }
 }

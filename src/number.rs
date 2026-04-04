@@ -160,34 +160,6 @@ where
             }
             _ => unreachable!("we know orders match"),
         }
-        /*
-        let rhs = rhs.into();
-        *self = match (&*self, &rhs) {
-            (Number::Int(x), Number::Int(y)) => {
-                if x % y == BigInt::from(0) {
-                    Number::Int(x / y)
-                } else {
-                    let l = BigFloat::from_str(&x.to_string()).unwrap();
-                    let r = BigFloat::from_str(&y.to_string()).unwrap();
-                    println!("l={l} | r={r}");
-                    let result = Number::Float(l.div(&r, 4096, RoundingMode::ToZero));
-                    println!("    result = {result}");
-                    result
-                }
-            }
-            (Number::Int(x), Number::Float(y)) => {
-                let i = BigFloat::from_str(&x.to_string()).unwrap();
-                Number::Float(i.div(y, 4096, RoundingMode::ToZero))
-            }
-            (Number::Float(x), Number::Int(y)) => {
-                let i = &BigFloat::from_str(&y.to_string()).unwrap();
-                Number::Float(x.div(i, 4096, RoundingMode::ToZero))
-            }
-            (Number::Float(x), Number::Float(y)) => {
-                Number::Float(x.div(y, 4096, RoundingMode::ToZero))
-            }
-        }
-        */
     }
 }
 

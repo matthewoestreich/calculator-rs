@@ -307,8 +307,9 @@ where
                 if x % y == BigInt::ZERO {
                     Number::Int(x / y)
                 } else {
-                    let l = BigDecimal::from_bigint(self.take_int().unwrap_or_default(), 0);
-                    let r = BigDecimal::from_bigint(rhs.take_int().unwrap_or_default(), 0);
+                    // For `expect` message : both sides are known to be Number::Int here
+                    let l = BigDecimal::from_bigint(self.take_int().expect("Number::Int"), 0);
+                    let r = BigDecimal::from_bigint(rhs.take_int().expect("Number::Int"), 0);
                     Number::Decimal(l / r)
                 }
             }

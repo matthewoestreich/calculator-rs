@@ -79,24 +79,38 @@ println!("{}", c.infix()); // "1.1"
 
 ### Infix Expression
 
-You can combine infix expression with key presses.
-
-```rust
-let mut c = Calculator::new();
-c.press(Key::ParenthesisOpen);
-c.press(Key::Two);
-c.press(Key::Add);
-c.expression("8)/2");
-// View current infix
-println!("{}", c.infix()); // "(2+8)/2"
-let result = c.calculate().unwrap();
-println!("{result:?}"); // Number::Int(5)
-```
-
 Create instance with infix expression in one line
 
 ```rust
 let mut c = Calculator::new_with_infix("(2+8)/2");
+let result = c.calculate().unwrap();
+println!("{result:?}"); // Number::Int(5)
+```
+
+Append infix expression to current infix expression.
+
+```rust
+let mut c = Calculator::new();
+c.expression("(1+1)")
+// Appended to current expression; does not replace it.
+c.expression("*2/12-5*99");
+println!(); // "(1+1)*2/12-5*99"
+```
+
+You can combine `expression("...")` with key `press(Key::_)` in any order.
+
+```rust
+let mut c = Calculator::new();
+
+// Build infix expression
+c.press(Key::ParenthesisOpen);
+c.press(Key::Two);
+c.press(Key::Add);
+c.expression("8)/2");
+
+// View current infix
+println!("{}", c.infix()); // "(2+8)/2"
+
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
@@ -109,7 +123,7 @@ You can acheive the same thing via `Calculator`, granted it will be more lines o
 // Order of operations
 let result = parse_expression("3 + 4 * 2 / (1 - 5)").unwrap();
 println!("{result:?}"); // Number::Int(1)
-// Equivalent to:
+// ~~ Equivalent to ~~
 let mut c = Calculator::new_with_infix("3 + 4 * 2 / (1 - 5)");
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(1)

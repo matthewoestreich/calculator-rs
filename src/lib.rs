@@ -41,7 +41,7 @@ impl Calculator {
         self.infix = format!("{}{key}", self.infix);
     }
 
-    /// Concates the provided expression to constructed infix string with NO trailing space.
+    /// Concates the provided expression to current infix expression with NO trailing space.
     /// It is up to you to ensure the provided expression contains valid characters!
     pub fn expression(&mut self, infix_expression: &str) {
         self.infix = format!("{}{infix_expression}", self.infix);

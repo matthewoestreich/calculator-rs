@@ -172,8 +172,16 @@ mod test {
     }
 
     #[test]
-    fn very_large_numbers() {
-        let r = parse("340282366920938463463374607431768211455 * 2").unwrap();
-        println!("{r}");
+    fn very_large_int() {
+        let r = parse("340282366920938463463374607431768211455 * 137").unwrap();
+        let e = Number::from_str("46618684268168569494482321218152244969335").unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[test]
+    fn very_large_dec() {
+        let r = parse("340282366920938463463374607431768211455 * 137.3367").unwrap();
+        let e = Number::from_str("46733257341110849475130439448474521326131.8985").unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 }

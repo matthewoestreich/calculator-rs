@@ -1,28 +1,30 @@
 use core::fmt;
 use std::{
     cmp::Ordering,
-    ops::{Div, DivAssign, Rem},
+    error,
+    ops::{Add, AddAssign, Div, DivAssign},
     str::FromStr,
 };
 
-use astro_float::{BigFloat, RoundingMode};
+use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use num_bigint::BigInt;
-
-use crate::ValueError;
 
 #[derive(Debug, Clone)]
 pub enum Number {
     Int(BigInt),
-    Float(BigFloat),
+    Decimal(BigDecimal),
 }
 
 impl Number {
-    pub fn to_float(&self) -> Self {
-        if let Self::Int(n) = self {
-            let bf = BigFloat::from_str(&n.to_string()).expect("[to_float] BigInt -> BigFloat");
-            return Self::Float(bf);
+    pub fn from_f64(n: f64) -> Result<Self, NumberError> {
+        Self::try_from(n)
+    }
+
+    /// Sets the scale only on Number::Decimal
+    pub fn set_scale(&mut self, scale: i64) {
+        if let Self::Decimal(n) = self {
+            *n = n.with_scale(scale);
         }
-        self.clone()
     }
 
     pub(crate) fn order(&self) -> NumberOrder {
@@ -37,11 +39,20 @@ impl Number {
         }
     }
 
+    /// Converts Number::Int to Number::Decimal.
+    /// Number::Decimal is already the highest 'order'.
     pub(crate) fn promote(&mut self) {
-        if let Self::Int(n) = self {
-            let bf = BigFloat::from_str(&n.to_string()).expect("[promote] BigInt -> BigFloat");
-            *self = Self::Float(bf);
+        if let Some(n) = self.take_int() {
+            *self = Self::Decimal(BigDecimal::from(n));
         }
+    }
+
+    /// Takes the backing BigInt leaivng 0 in it's place.
+    pub(crate) fn take_int(&mut self) -> Option<BigInt> {
+        if let Self::Int(n) = self {
+            return Some(std::mem::take(n));
+        }
+        None
     }
 }
 
@@ -78,18 +89,17 @@ impl_number_from!(i16 => Int => BigInt);
 impl_number_from!(i32 => Int => BigInt);
 impl_number_from!(i64 => Int => BigInt);
 impl_number_from!(i128 => Int => BigInt);
-impl_number_from!(f64 => Float => BigFloat);
 
-impl From<BigFloat> for Number {
-    fn from(value: BigFloat) -> Self {
-        Number::Float(value)
+impl From<BigDecimal> for Number {
+    fn from(value: BigDecimal) -> Self {
+        Number::Decimal(value)
     }
 }
 
 /// Clones the value!!
-impl From<&BigFloat> for Number {
-    fn from(value: &BigFloat) -> Self {
-        Number::Float(value.clone())
+impl From<&BigDecimal> for Number {
+    fn from(value: &BigDecimal) -> Self {
+        Number::Decimal(value.clone())
     }
 }
 
@@ -107,24 +117,37 @@ impl From<&BigInt> for Number {
 }
 
 // ===========================================================================================
+// ========================== TryFrom ========================================================
+// ===========================================================================================
+
+impl TryFrom<f64> for Number {
+    type Error = NumberError;
+
+    fn try_from(value: f64) -> Result<Self, Self::Error> {
+        let bd = BigDecimal::from_str(&value.to_string())?;
+        Ok(Number::Decimal(bd))
+    }
+}
+
+// ===========================================================================================
 // ========================== FromStr ========================================================
 // ===========================================================================================
 
 impl FromStr for Number {
-    type Err = ValueError;
+    type Err = NumberError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains(".") {
             return s
-                .parse::<BigFloat>()
-                .map(Self::Float)
-                .map_err(|_| ValueError::Parsing {
+                .parse::<BigDecimal>()
+                .map(Self::Decimal)
+                .map_err(|_| NumberError::Parsing {
                     value: s.to_string(),
                 });
         }
         s.parse::<BigInt>()
             .map(Self::Int)
-            .map_err(|_| ValueError::Parsing {
+            .map_err(|_| NumberError::Parsing {
                 value: s.to_string(),
             })
     }
@@ -134,33 +157,60 @@ impl FromStr for Number {
 // ========================== Display ========================================================
 // ===========================================================================================
 
-fn scientific_to_decimal(s: &str) -> String {
-    if let Some((mantissa, exp)) = s.split_once('e') {
-        let exp: i32 = exp.parse().unwrap();
-        let mut digits = mantissa.replace('.', "");
-        let decimal_pos = mantissa.find('.').unwrap_or(digits.len()) as i32;
-        let new_pos = decimal_pos + exp;
-        if new_pos <= 0 {
-            format!("0.{}{}", "0".repeat(-new_pos as usize), digits)
-        } else if new_pos as usize >= digits.len() {
-            format!("{}{}", digits, "0".repeat(new_pos as usize - digits.len()))
-        } else {
-            digits.insert(new_pos as usize, '.');
-            digits
-        }
-    } else {
-        s.to_string()
-    }
-}
-
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Number::Int(big_int) => write!(f, "{big_int}"),
-            Number::Float(big_float) => {
-                write!(f, "{}", scientific_to_decimal(&big_float.to_string()))
-            }
+            Number::Decimal(big_decimal) => write!(f, "{big_decimal}"),
         }
+    }
+}
+
+// ===========================================================================================
+// ========================== Add ============================================================
+// ===========================================================================================
+
+impl<Rhs> AddAssign<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    fn add_assign(&mut self, rhs: Rhs) {
+        let mut rhs = rhs.into();
+        self.match_order(&mut rhs);
+
+        *self = match (&self, &rhs) {
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x + y),
+            (Number::Int(x), Number::Int(y)) => Number::Int(x + y),
+            _ => unreachable!("we know orders match"),
+        }
+    }
+}
+
+impl AddAssign<&Number> for Number {
+    fn add_assign(&mut self, rhs: &Number) {
+        *self = &*self + rhs;
+    }
+}
+
+impl<Rhs> Add<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    type Output = Number;
+
+    fn add(mut self, rhs: Rhs) -> Self::Output {
+        self.add_assign(rhs);
+        self
+    }
+}
+
+impl<'a> Add<&'a Number> for &Number {
+    type Output = Number;
+
+    fn add(self, rhs: &'a Number) -> Self::Output {
+        let mut lhs = self.clone();
+        lhs += rhs.clone();
+        lhs
     }
 }
 
@@ -168,7 +218,6 @@ impl fmt::Display for Number {
 // ========================== Div ============================================================
 // ===========================================================================================
 
-#[allow(clippy::clone_on_copy)]
 impl<Rhs> DivAssign<Rhs> for Number
 where
     Rhs: Into<Number>,
@@ -178,17 +227,14 @@ where
         self.match_order(&mut rhs);
 
         *self = match (&self, &rhs) {
-            (Number::Float(x), Number::Float(y)) => {
-                let precision = x.precision().map_or(128, |prec| prec.max(128));
-                Number::Float(x.div(y, precision, RoundingMode::None))
-            }
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x / y),
             (Number::Int(x), Number::Int(y)) => {
                 if x % y == BigInt::ZERO {
                     Number::Int(x / y)
                 } else {
-                    let l = BigFloat::from_str(&x.to_string()).expect("[div] BigFloat from BigInt");
-                    let r = BigFloat::from_str(&y.to_string()).expect("[div] BigFloat from BigInt");
-                    Number::Float(l.div(&r, (x.bits() as usize).max(128), RoundingMode::None))
+                    let l = BigDecimal::from_bigint(self.take_int().unwrap_or_default(), 0);
+                    let r = BigDecimal::from_bigint(rhs.take_int().unwrap_or_default(), 0);
+                    Number::Decimal(l / r)
                 }
             }
             _ => unreachable!("we know orders match"),
@@ -225,20 +271,36 @@ impl<'a> Div<&'a Number> for &Number {
 }
 
 // ===========================================================================================
+// ========================== PartialEq/Eq ===================================================
+// ===========================================================================================
+
+impl PartialEq for Number {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Int(l), Self::Int(r)) => l == r,
+            (Self::Decimal(l), Self::Decimal(r)) => l == r,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Number {}
+
+// ===========================================================================================
 // ========================== NumberOrder ====================================================
 // ===========================================================================================
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NumberOrder {
     Int,
-    Float,
+    Decimal,
 }
 
 impl From<Number> for NumberOrder {
     fn from(value: Number) -> Self {
         match value {
             Number::Int(_) => Self::Int,
-            Number::Float(_) => Self::Float,
+            Number::Decimal(_) => Self::Decimal,
         }
     }
 }
@@ -247,10 +309,37 @@ impl From<&Number> for NumberOrder {
     fn from(value: &Number) -> Self {
         match value {
             Number::Int(_) => Self::Int,
-            Number::Float(_) => Self::Float,
+            Number::Decimal(_) => Self::Decimal,
         }
     }
 }
+
+// ===========================================================================================
+// ========================== NumberError ====================================================
+// ===========================================================================================
+
+#[derive(Debug, Clone)]
+pub enum NumberError {
+    Parsing { value: String },
+}
+
+impl fmt::Display for NumberError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NumberError::Parsing { value } => write!(f, "Error parsing value : {value}"),
+        }
+    }
+}
+
+impl From<ParseBigDecimalError> for NumberError {
+    fn from(value: ParseBigDecimalError) -> Self {
+        Self::Parsing {
+            value: value.to_string(),
+        }
+    }
+}
+
+impl error::Error for NumberError {}
 
 // ===========================================================================================
 // ========================== Tests ==========================================================
@@ -261,60 +350,56 @@ mod test {
     use super::*;
 
     #[test]
-    // If two integers div produces a decimal, output should be Number::Float
-    fn div_result_is_float() {
+    fn from_str() {
+        let a = Number::from_str("1.1").unwrap();
+        assert_eq!(a.order(), NumberOrder::Decimal);
+    }
+
+    #[test]
+    fn from_f64() {
+        let a = Number::from_f64(1.1).unwrap();
+        assert_eq!(a.order(), NumberOrder::Decimal);
+    }
+
+    #[test]
+    fn add_decimals() {
+        let x = Number::from_f64(1.1).unwrap();
+        assert_eq!(x.order(), NumberOrder::Decimal);
+        let y = Number::from_f64(2.2).unwrap();
+        assert_eq!(y.order(), NumberOrder::Decimal);
+        let r = x + y;
+        let e = Number::from_f64(3.3).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[test]
+    // If two integers div produces a decimal, output should be Number::Decimal
+    fn div_result_is_decimal() {
         let x = Number::Int(1.into());
         let y = Number::Int(2.into());
         let r = x / y;
-        let expected = BigFloat::from_f64(0.5, 128);
-        match r {
-            Number::Int(_) => panic!("expected result to be Float"),
-            Number::Float(big_float) => {
-                println!("result precision = {}", big_float.precision().unwrap());
-                assert_eq!(big_float, expected, "expected {expected} got {big_float}");
-            }
-        }
+        let e = Number::from_f64(0.5).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 
     #[test]
     fn div_int_by_float() {
         let x = Number::Int(1.into());
-        let y = Number::Float(2.2.into());
+        let y = Number::from_f64(2.2).unwrap();
         let r = x / y;
-        match &r {
-            Number::Int(_) => panic!("expected result to be Float"),
-            Number::Float(big_float) => {
-                #[allow(clippy::excessive_precision)]
-                let expected =
-                    BigFloat::from_str("0.45454545454545450875295786363119170974").unwrap();
-
-                println!("result precision = {}", big_float.precision().unwrap());
-
-                assert_eq!(
-                    big_float,
-                    &expected,
-                    "expected {} got {big_float}",
-                    expected //Number::from(&expected)
-                );
-            }
-        }
+        let estr = "0.4545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545";
+        let e = Number::from_str(estr).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}",);
     }
 
     #[test]
     fn very_large_ints() {
-        let an = BigInt::from_str(
-            "57896044618658097711785492504343953926634992332820282019728792003956564819968",
-        )
-        .unwrap();
-        let a = Number::Int(an);
+        let astr = "57896044618658097711785492504343953926634992332820282019728792003956564819968";
+        let a = Number::from_str(astr).unwrap();
         let b = Number::Int((-1).into());
         let r = a / b;
-        match r {
-            Number::Int(big_int) => println!(
-                "got Number::Int = {big_int} with {} bits of precision",
-                big_int.bits()
-            ),
-            Number::Float(big_float) => println!("got Number::Float = {big_float}"),
-        }
+        let estr = "-57896044618658097711785492504343953926634992332820282019728792003956564819968";
+        let e = Number::from_str(estr).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 }

@@ -1,12 +1,9 @@
+use crate::{CalculatorError, Value};
 use regex::Regex;
+use std::str::FromStr;
 
 // Shunting-Yard algorithm.
-// Returns expression in reverse polish notation.
-pub fn parse(infix: &str) -> Option<String> {
-    if infix.is_empty() {
-        return None;
-    }
-
+pub fn parse(infix: &str) -> Result<Value, CalculatorError> {
     let mut output = vec![];
     let mut stack = vec![];
     let tokens = tokenize(infix);
@@ -28,7 +25,7 @@ pub fn parse(infix: &str) -> Option<String> {
                     if top == "(" || precedence(top) < precedence(t) {
                         break;
                     }
-                    output.push(stack.pop().expect("stack not empty"));
+                    output.push(stack.pop().ok_or(CalculatorError::InvalidExpression)?);
                 }
                 stack.push(t);
             }
@@ -39,7 +36,72 @@ pub fn parse(infix: &str) -> Option<String> {
         output.push(p);
     }
 
-    Some(output.join(" "))
+    eval_rpn(&output.join(" "))
+}
+
+/// Evaluates a reverse polish notation string.
+/// Examples:
+/// |-------------------|---------------------|
+/// |  infix (regular)  |        rpn          |
+/// |-------------------|---------------------|
+/// | 3 + 4             | 3 4 +               |
+/// | (5 + 6) * 3       | 5 6 + 3 *           |
+/// | (4 + 8)(1 + 3)    | 4 8 + 1 3 + /       |
+/// | (2 / 4) * (5 - 6) | 2 4 / 5 6 - *       |
+/// | 2 ^ 3             | 2 3 ^               |
+/// |-------------------|---------------------|
+fn eval_rpn(rpn: &str) -> Result<Value, CalculatorError> {
+    if rpn.is_empty() {
+        return Err(CalculatorError::EmptyExpression);
+    }
+
+    let rpn = rpn.trim();
+    let rpn_tokens: Vec<_> = rpn.split_whitespace().collect();
+    println!("rpn_tokens = {rpn_tokens:?}");
+    let mut stack = vec![];
+
+    for token in rpn_tokens {
+        println!("eval token : {token:?}");
+        if let Ok(v) = Value::from_str(token) {
+            stack.push(v);
+            continue;
+        }
+
+        // Order matters here! 'b' must come before 'a'!
+        let b = stack.pop().ok_or(CalculatorError::InvalidExpression)?;
+        let a = stack.pop().ok_or(CalculatorError::InvalidExpression)?;
+
+        match token {
+            "+" => {
+                let result = &a + &b;
+                println!("add : a = {a:?} + b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "-" => {
+                let result = &a - &b;
+                println!("sub : a = {a:?} - b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "*" | "x" => {
+                let result = &a * &b;
+                println!("mul : a = {a:?} * b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+            "/" => {
+                let result = &a / &b;
+                println!("div : a = {a:?} / b = {b:?} = {result:?}");
+                stack.push(result);
+            }
+
+            "^" => stack.push(a.pow(b)?),
+            _ => {}
+        };
+    }
+
+    stack
+        .into_iter()
+        .next()
+        .ok_or(CalculatorError::InvalidExpression)
 }
 
 fn tokenize(expression: &str) -> Vec<&str> {
@@ -63,26 +125,33 @@ mod test {
     use super::*;
 
     #[test]
-    fn shunting_yard_reverse_polish_notation() {
-        let rpn_str = parse("3 +4* 2 /(1 - 5)").unwrap();
-        let expected = "3 4 2 * 1 5 - / +";
+    fn eval() {
+        let expression = "3 + 4 * 2 / (1 - 5)";
+        let expected = Value::SignedInt(1);
+        let result = parse(expression).unwrap();
         assert_eq!(
-            rpn_str, expected,
-            "expected '{expected:?}' got '{rpn_str:?}'"
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
         );
 
-        let rpn_str = parse("33 +44* 22 /(11 - 55)").unwrap();
-        let expected = "33 44 22 * 11 55 - / +";
+        let expression = "3.1 + 2";
+        let expected = Value::Float(5.1);
+        let result = parse(expression).unwrap();
         assert_eq!(
-            rpn_str, expected,
-            "expected '{expected:?}' got '{rpn_str:?}'"
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
         );
+    }
 
-        let rpn_str = parse("33 +44* 22 /(11 - 55)").unwrap();
-        let expected = "3 4 2 * 1 5 - / +";
+    #[test]
+    fn float_return() {
+        // Tests return when it should be a Float
+        let expression = "2 / (1 - 56)";
+        let expected = Value::Float(-0.03636363636);
+        let result = parse(expression).unwrap();
         assert_eq!(
-            rpn_str, expected,
-            "expected '{expected:?}' got '{rpn_str:?}'"
+            result, expected,
+            "expression = {expression:?} : expected {expected:?} got {result:?}"
         );
     }
 }

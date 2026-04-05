@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-astro-float = "0.9.5"
+bigdecimal = "0.4.10"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"
 regex = "1.12.3"

@@ -103,9 +103,15 @@ println!("{result:?}"); // Number::Int(5)
 
 ## Parse Infix Expression Helper
 
+You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper..
+
 ```rust
 // Order of operations
 let result = parse_expression("3 + 4 * 2 / (1 - 5)").unwrap();
+println!("{result:?}"); // Number::Int(1)
+// Equivalent to:
+let mut c = Calculator::new_with_infix("3 + 4 * 2 / (1 - 5)");
+let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(1)
 
 // Fractions

@@ -54,11 +54,11 @@ impl Number {
         }
     }
 
-    pub(crate) fn order(&self) -> NumberOrder {
+    pub fn order(&self) -> NumberOrder {
         NumberOrder::from(self)
     }
 
-    pub(crate) fn match_order(&mut self, other: &mut Self) {
+    pub fn match_order(&mut self, other: &mut Self) {
         match self.order().cmp(&other.order()) {
             Ordering::Less => self.promote(),
             Ordering::Greater => other.promote(),
@@ -68,14 +68,14 @@ impl Number {
 
     /// Converts Number::Int to Number::Decimal.
     /// Number::Decimal is already the highest 'order'.
-    pub(crate) fn promote(&mut self) {
+    pub fn promote(&mut self) {
         if let Some(n) = self.take_int() {
             *self = Self::Decimal(BigDecimal::from(n));
         }
     }
 
     /// Takes the backing BigInt leaivng 0 in it's place.
-    pub(crate) fn take_int(&mut self) -> Option<BigInt> {
+    pub fn take_int(&mut self) -> Option<BigInt> {
         if let Self::Int(n) = self {
             return Some(std::mem::take(n));
         }

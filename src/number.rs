@@ -511,7 +511,32 @@ mod test {
         let y = Number::from_f64(2.2).unwrap();
         assert_eq!(y.order(), NumberOrder::Decimal);
         let r = x + y;
+        assert_eq!(r.order(), NumberOrder::Decimal);
         let e = Number::from_f64(3.3).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[test]
+    fn sub_decimals() {
+        let x = Number::from_f64(5.5).unwrap();
+        assert_eq!(x.order(), NumberOrder::Decimal);
+        let y = Number::from_f64(2.2).unwrap();
+        assert_eq!(y.order(), NumberOrder::Decimal);
+        let r = x - y;
+        assert_eq!(r.order(), NumberOrder::Decimal);
+        let e = Number::from_f64(3.3).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[test]
+    fn mul_decimals() {
+        let x = Number::from_f64(5.5).unwrap();
+        assert_eq!(x.order(), NumberOrder::Decimal);
+        let y = Number::from_f64(2.2).unwrap();
+        assert_eq!(y.order(), NumberOrder::Decimal);
+        let r = x * y;
+        assert_eq!(r.order(), NumberOrder::Decimal);
+        let e = Number::from_f64(12.1).unwrap();
         assert_eq!(r, e, "expected {e} got {r}");
     }
 
@@ -521,18 +546,33 @@ mod test {
         let x = Number::Int(1.into());
         let y = Number::Int(2.into());
         let r = x / y;
+        assert_eq!(r.order(), NumberOrder::Decimal);
         let e = Number::from_f64(0.5).unwrap();
         assert_eq!(r, e, "expected {e} got {r}");
     }
 
     #[test]
-    fn div_int_by_float() {
+    fn div_int_by_decimal() {
         let x = Number::Int(1.into());
         let y = Number::from_f64(2.2).unwrap();
+        assert_eq!(y.order(), NumberOrder::Decimal);
         let r = x / y;
+        assert_eq!(r.order(), NumberOrder::Decimal);
         let estr = "0.4545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545";
         let e = Number::from_str(estr).unwrap();
         assert_eq!(r, e, "expected {e} got {r}",);
+    }
+
+    #[test]
+    // modulo
+    fn rem_decimals() {
+        let x = Number::from_f64(5.6).unwrap();
+        assert_eq!(x.order(), NumberOrder::Decimal);
+        let y = Number::from_f64(3.2).unwrap();
+        assert_eq!(x.order(), NumberOrder::Decimal);
+        let r = x % y;
+        let e = Number::from_f64(2.4).unwrap();
+        assert_eq!(r, e, "expected {e} got {r}");
     }
 
     #[test]

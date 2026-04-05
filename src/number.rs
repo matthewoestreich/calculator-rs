@@ -2,7 +2,7 @@ use core::fmt;
 use std::{
     cmp::Ordering,
     error,
-    ops::{Add, AddAssign, Div, DivAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
     str::FromStr,
 };
 
@@ -215,6 +215,54 @@ impl<'a> Add<&'a Number> for &Number {
 }
 
 // ===========================================================================================
+// ========================== Sub ============================================================
+// ===========================================================================================
+
+impl<Rhs> SubAssign<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    fn sub_assign(&mut self, rhs: Rhs) {
+        let mut rhs = rhs.into();
+        self.match_order(&mut rhs);
+
+        *self = match (&self, &rhs) {
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x - y),
+            (Number::Int(x), Number::Int(y)) => Number::Int(x - y),
+            _ => unreachable!("we know orders match"),
+        }
+    }
+}
+
+impl SubAssign<&Number> for Number {
+    fn sub_assign(&mut self, rhs: &Number) {
+        *self = &*self - rhs;
+    }
+}
+
+impl<Rhs> Sub<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    type Output = Number;
+
+    fn sub(mut self, rhs: Rhs) -> Self::Output {
+        self.sub_assign(rhs);
+        self
+    }
+}
+
+impl<'a> Sub<&'a Number> for &Number {
+    type Output = Number;
+
+    fn sub(self, rhs: &'a Number) -> Self::Output {
+        let mut lhs = self.clone();
+        lhs -= rhs.clone();
+        lhs
+    }
+}
+
+// ===========================================================================================
 // ========================== Div ============================================================
 // ===========================================================================================
 
@@ -266,6 +314,102 @@ impl<'a> Div<&'a Number> for &Number {
     fn div(self, rhs: &'a Number) -> Self::Output {
         let mut lhs = self.clone();
         lhs /= rhs.clone();
+        lhs
+    }
+}
+
+// ===========================================================================================
+// ========================== Mul ============================================================
+// ===========================================================================================
+
+impl<Rhs> MulAssign<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    fn mul_assign(&mut self, rhs: Rhs) {
+        let mut rhs = rhs.into();
+        self.match_order(&mut rhs);
+
+        *self = match (&self, &rhs) {
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x * y),
+            (Number::Int(x), Number::Int(y)) => Number::Int(x * y),
+            _ => unreachable!("we know orders match"),
+        }
+    }
+}
+
+impl MulAssign<&Number> for Number {
+    fn mul_assign(&mut self, rhs: &Number) {
+        *self = &*self * rhs;
+    }
+}
+
+impl<Rhs> Mul<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    type Output = Number;
+
+    fn mul(mut self, rhs: Rhs) -> Self::Output {
+        self.mul_assign(rhs);
+        self
+    }
+}
+
+impl<'a> Mul<&'a Number> for &Number {
+    type Output = Number;
+
+    fn mul(self, rhs: &'a Number) -> Self::Output {
+        let mut lhs = self.clone();
+        lhs *= rhs.clone();
+        lhs
+    }
+}
+
+// ===========================================================================================
+// ========================== Rem ============================================================
+// ===========================================================================================
+
+impl<Rhs> RemAssign<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    fn rem_assign(&mut self, rhs: Rhs) {
+        let mut rhs = rhs.into();
+        self.match_order(&mut rhs);
+
+        *self = match (&self, &rhs) {
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x % y),
+            (Number::Int(x), Number::Int(y)) => Number::Int(x % y),
+            _ => unreachable!("we know orders match"),
+        }
+    }
+}
+
+impl RemAssign<&Number> for Number {
+    fn rem_assign(&mut self, rhs: &Number) {
+        *self = &*self % rhs;
+    }
+}
+
+impl<Rhs> Rem<Rhs> for Number
+where
+    Rhs: Into<Number>,
+{
+    type Output = Number;
+
+    fn rem(mut self, rhs: Rhs) -> Self::Output {
+        self.rem_assign(rhs);
+        self
+    }
+}
+
+impl<'a> Rem<&'a Number> for &Number {
+    type Output = Number;
+
+    fn rem(self, rhs: &'a Number) -> Self::Output {
+        let mut lhs = self.clone();
+        lhs %= rhs.clone();
         lhs
     }
 }

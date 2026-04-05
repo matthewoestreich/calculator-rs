@@ -2,7 +2,7 @@
 
 Calculator capable of handling arbitrarily large numbers, trading speed for precision.
 
-Parses infix string via the [Shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
+Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunting_yard_algorithm) algorithm, which is then evaluated and returned as custom `Number` type.
 
 Examples:
 

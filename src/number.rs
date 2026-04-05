@@ -60,10 +60,10 @@ impl Number {
 // ===========================================================================================
 
 macro_rules! impl_number_from {
-    ($t:ty => $variant:ident => $big_kind:ident) => {
+    ($t:ty) => {
         impl From<$t> for Number {
             fn from(value: $t) -> Self {
-                Number::$variant($big_kind::from(value))
+                Number::Int(BigInt::from(value))
             }
         }
 
@@ -72,22 +72,22 @@ macro_rules! impl_number_from {
             $t: Copy,
         {
             fn from(value: &$t) -> Self {
-                Number::$variant($big_kind::from(*value))
+                Number::Int(BigInt::from(*value))
             }
         }
     };
 }
 
-impl_number_from!(u8 => Int => BigInt);
-impl_number_from!(u16 => Int => BigInt);
-impl_number_from!(u32 => Int => BigInt);
-impl_number_from!(u64 => Int => BigInt);
-impl_number_from!(u128 => Int => BigInt);
-impl_number_from!(i8 => Int => BigInt);
-impl_number_from!(i16 => Int => BigInt);
-impl_number_from!(i32 => Int => BigInt);
-impl_number_from!(i64 => Int => BigInt);
-impl_number_from!(i128 => Int => BigInt);
+impl_number_from!(u8);
+impl_number_from!(u16);
+impl_number_from!(u32);
+impl_number_from!(u64);
+impl_number_from!(u128);
+impl_number_from!(i8);
+impl_number_from!(i16);
+impl_number_from!(i32);
+impl_number_from!(i64);
+impl_number_from!(i128);
 
 impl From<BigDecimal> for Number {
     fn from(value: BigDecimal) -> Self {

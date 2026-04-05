@@ -8,14 +8,7 @@ license = "GPL-3.0-or-later OR MIT"
 readme = "README.md"
 repository = "https://github.com/matthewoestreich/calculator-rs"
 homepage = "https://github.com/matthewoestreich/calculator-rs#README.md"
-keywords = [
-  "calculator",
-  "math",
-  "mathematics",
-  "bigint",
-  "bigdecimal",
-  "arbitrary-precision",
-]
+keywords = ["calculator", "math", "mathematics", "bigint", "bigdecimal"]
 categories = [
   "mathematics",
 ] # See available categories here: https://crates.io/category_slugs

@@ -10,7 +10,7 @@ You can either work with the exposed `Number` enum directly, or use the `Calcula
 
 ## Number
 
-Create `Number::Int`` where calculation produces `Number::Decimal`
+Create `Number::Int` where calculation produces `Number::Decimal`
 
 ```rust
 let a = Number::Int(1.into());

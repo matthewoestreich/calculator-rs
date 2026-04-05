@@ -54,6 +54,7 @@ println!("{result:?}"); // Number::Int(4)
 // We store the result as the new infix
 // expression so you can continue using
 // it in calculations.
+println!("{}", c.infix()); // "4"
 c.press(Key::Add);
 c.press(Key::Four);
 println!("{}", c.infix()); // "4+4"

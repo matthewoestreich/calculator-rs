@@ -48,13 +48,12 @@ c.press(Key::Two); // 2
 println!("{}", c.infix()); // "2+2"
 
 // Evaluate/calculate expression.
-// We store the result as the new infix
-// expression so you can continue using
-// it in calculations.
 let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(4)
 
-// Continue using result
+// We store the result as the new infix
+// expression so you can continue using
+// it in calculations.
 c.press(Key::Add);
 c.press(Key::Four);
 println!("{}", c.infix()); // "4+4"

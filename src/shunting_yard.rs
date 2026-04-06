@@ -68,9 +68,9 @@ fn eval_rpn(rpn: &str) -> Result<Number, CalculatorError> {
         return Err(CalculatorError::EmptyExpression);
     }
 
+    let mut stack = vec![];
     let rpn = rpn.trim();
     let rpn_tokens: Vec<_> = rpn.split_whitespace().collect();
-    let mut stack = vec![];
 
     for token in rpn_tokens {
         if let Ok(v) = Number::from_str(token) {

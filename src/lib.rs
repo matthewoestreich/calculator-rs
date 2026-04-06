@@ -1,7 +1,7 @@
 mod number;
 mod shunting_yard;
 
-pub use bigdecimal::BigDecimal;
+pub use bigdecimal::{BigDecimal, RoundingMode};
 pub use num_bigint::BigInt;
 pub use number::{Number, NumberError, NumberOrder, ToNumber};
 

@@ -54,6 +54,13 @@ impl Number {
         }
     }
 
+    /// Sets the scale and rounding mode only on Number::Decimal
+    pub fn set_scale_round(&mut self, scale: i64, rounding_mode: bigdecimal::RoundingMode) {
+        if let Self::Decimal(n) = self {
+            *n = n.with_scale_round(scale, rounding_mode);
+        }
+    }
+
     pub fn order(&self) -> NumberOrder {
         NumberOrder::from(self)
     }
@@ -254,6 +261,50 @@ impl fmt::Display for Number {
 }
 
 // ===========================================================================================
+// ========================== Macros for implementing arithmetic =============================
+// ===========================================================================================
+
+/// Expects `$lhs` to be `&Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be an operator (+, -, /, *, %)
+macro_rules! match_arithmetic {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        match ($lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x $op y),
+            (Number::Int(x), Number::Decimal(y)) => {
+                let x = BigDecimal::from_bigint(x.clone(), 0);
+                Number::Decimal(x $op y)
+            }
+            (Number::Decimal(x), Number::Int(y)) => {
+                let y = BigDecimal::from_bigint(y.clone(), 0);
+                Number::Decimal(x $op y)
+            }
+        }
+    };
+}
+
+/// Expects `$lhs` to be `&mut Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be an operator (+, -, /, *, %)
+macro_rules! match_arithmetic_assign {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        *$lhs = match (&$lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x $op y),
+            (Number::Decimal(x), Number::Int(y)) => {
+                let y = BigDecimal::from_bigint(y.clone(), 0);
+                Number::Decimal(x $op y)
+            }
+            (Number::Int(_), Number::Decimal(_)) => {
+                $lhs.promote();
+                &*$lhs $op $rhs
+            }
+        }
+    };
+}
+
+// ===========================================================================================
 // ========================== AddAssign/Add ==================================================
 // ===========================================================================================
 
@@ -265,18 +316,7 @@ impl AddAssign<Number> for Number {
 
 impl AddAssign<&Number> for Number {
     fn add_assign(&mut self, rhs: &Number) {
-        *self = match (&self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x + y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x + y),
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x + y)
-            }
-            (Number::Int(_), Number::Decimal(_)) => {
-                self.promote();
-                &*self + rhs
-            }
-        }
+        match_arithmetic_assign!(self, rhs, +);
     }
 }
 
@@ -293,18 +333,7 @@ impl Add<&Number> for &Number {
     type Output = Number;
 
     fn add(self, rhs: &Number) -> Self::Output {
-        match (self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x + y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x + y),
-            (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from_bigint(x.clone(), 0);
-                Number::Decimal(x + y)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x + y)
-            }
-        }
+        match_arithmetic!(self, rhs, +)
     }
 }
 
@@ -320,18 +349,7 @@ impl SubAssign<Number> for Number {
 
 impl SubAssign<&Number> for Number {
     fn sub_assign(&mut self, rhs: &Number) {
-        *self = match (&self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x - y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x - y),
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x - y)
-            }
-            (Number::Int(_), Number::Decimal(_)) => {
-                self.promote();
-                &*self - rhs
-            }
-        }
+        match_arithmetic_assign!(self, rhs, -);
     }
 }
 
@@ -348,18 +366,7 @@ impl Sub<&Number> for &Number {
     type Output = Number;
 
     fn sub(self, rhs: &Number) -> Self::Output {
-        match (self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x - y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x - y),
-            (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from_bigint(x.clone(), 0);
-                Number::Decimal(x - y)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x - y)
-            }
-        }
+        match_arithmetic!(self, rhs, -)
     }
 }
 
@@ -444,18 +451,7 @@ impl MulAssign<Number> for Number {
 
 impl MulAssign<&Number> for Number {
     fn mul_assign(&mut self, rhs: &Number) {
-        *self = match (&self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x * y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x * y),
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x * y)
-            }
-            (Number::Int(_), Number::Decimal(_)) => {
-                self.promote();
-                &*self * rhs
-            }
-        }
+        match_arithmetic_assign!(self, rhs, *);
     }
 }
 
@@ -472,18 +468,7 @@ impl Mul<&Number> for &Number {
     type Output = Number;
 
     fn mul(self, rhs: &Number) -> Self::Output {
-        match (self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x * y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x * y),
-            (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from_bigint(x.clone(), 0);
-                Number::Decimal(x * y)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x * y)
-            }
-        }
+        match_arithmetic!(self, rhs, *)
     }
 }
 
@@ -499,18 +484,7 @@ impl RemAssign<Number> for Number {
 
 impl RemAssign<&Number> for Number {
     fn rem_assign(&mut self, rhs: &Number) {
-        *self = match (&self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x % y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x % y),
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x % y)
-            }
-            (Number::Int(_), Number::Decimal(_)) => {
-                self.promote();
-                &*self % rhs
-            }
-        }
+        match_arithmetic_assign!(self, rhs, %);
     }
 }
 
@@ -527,18 +501,7 @@ impl Rem<&Number> for &Number {
     type Output = Number;
 
     fn rem(self, rhs: &Number) -> Self::Output {
-        match (self, rhs) {
-            (Number::Int(x), Number::Int(y)) => Number::Int(x % y),
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x % y),
-            (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from_bigint(x.clone(), 0);
-                Number::Decimal(x % y)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x % y)
-            }
-        }
+        match_arithmetic!(self, rhs, %)
     }
 }
 
@@ -622,6 +585,8 @@ impl From<&Number> for NumberOrder {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::*;
+    use rstest::*;
 
     #[test]
     fn from_str() {
@@ -635,119 +600,174 @@ mod test {
         assert_eq!(a.order(), NumberOrder::Decimal);
     }
 
-    #[test]
-    fn add_decimals() {
-        let x = Number::from_f64(1.1).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::from_f64(2.2).unwrap();
-        assert_eq!(y.order(), NumberOrder::Decimal);
+    #[rstest]
+    #[case::add1(1, 1, 2)]
+    #[case::add2(1.1, 2.2, 3.3)]
+    #[case::add3(1.1, 2, 3.1)]
+    #[case::add4(2, 1.1, 3.1)]
+    fn add(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
         let r = x + y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(3.3).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
-    #[test]
-    fn add_decimal_and_int() {
-        let x = Number::from_f64(3.1).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::Int(2.into());
-        let r = x + y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(5.1).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+    #[rstest]
+    #[case::add_assign1(1, 1, 2)]
+    #[case::add_assign2(1.1, 2.2, 3.3)]
+    #[case::add_assign3(1.1, 2, 3.1)]
+    #[case::add_assign4(2, 1.1, 3.1)]
+    fn add_assign(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let mut x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        x += y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
-    #[test]
-    fn sub_decimals() {
-        let x = Number::from_f64(5.5).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::from_f64(2.2).unwrap();
-        assert_eq!(y.order(), NumberOrder::Decimal);
+    #[rstest]
+    #[case::sub1(1, 1, 0)]
+    #[case::sub2(1.1, 2.2, -1.1)]
+    #[case::sub3(2, 1.1, 0.9)]
+    #[case::sub4(100, 47.4567, 52.5433)]
+    #[case::sub5(5.5, 2.2, 3.3)]
+    fn sub(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
         let r = x - y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(3.3).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
-    #[test]
-    fn sub_decimal_by_int() {
-        let x = Number::from_f64(5.5).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::Int(2.into());
-        let r = x - y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(3.5).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+    #[rstest]
+    #[case::sub_assign1(1, 1, 0)]
+    #[case::sub_assign2(1.1, 2.2, -1.1)]
+    #[case::sub_assign3(2, 1.1, 0.9)]
+    #[case::sub_assign4(100, 47.4567, 52.5433)]
+    #[case::sub_assign5(5.5, 2.2, 3.3)]
+    fn sub_assign(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let mut x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        x -= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
-    #[test]
-    fn mul_decimals() {
-        let x = Number::from_f64(5.5).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::from_f64(2.2).unwrap();
-        assert_eq!(y.order(), NumberOrder::Decimal);
+    #[rstest]
+    #[case::mul1(1, 1, 1)]
+    #[case::mul2(1.1, 2.2, 2.42)]
+    #[case::mul3(2, 1.1, 2.2)]
+    #[case::mul4(47.4567, 100, 4745.67)]
+    #[case::mul5(55, 22, 1210)]
+    #[case::mul6(5.7, 2, 11.4)]
+    fn mul(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
         let r = x * y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(12.1).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
-    #[test]
-    fn mul_decimal_by_int() {
-        let x = Number::from_f64(5.7).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::Int(2.into());
-        let r = x * y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(11.4).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+    #[rstest]
+    #[case::mul_assign1(1, 1, 1)]
+    #[case::mul_assign2(1.1, 2.2, 2.42)]
+    #[case::mul_assign3(2, 1.1, 2.2)]
+    #[case::mul_assign4(47.4567, 100, 4745.67)]
+    #[case::mul_assign5(55, 22, 1210)]
+    #[case::mul_assign6(5.7, 2, 11.4)]
+    fn mul_assign(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let mut x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        x *= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
-    #[test]
-    // If two integers div produces a decimal, output should be Number::Decimal
-    fn div_result_is_decimal() {
-        let x = Number::Int(1.into());
-        let y = Number::Int(2.into());
-        let r = x / y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let e = Number::from_f64(0.5).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+    #[rstest]
+    #[case::div1(1, 1, 1)]
+    #[case::div2(1.1, 2.2, 0.5)]
+    #[case::div3(2, 1.1, 1.81818181818)]
+    #[case::div4(100, 47, 2.12765957447)]
+    #[case::div5(55, 5, 11)]
+    #[case::div6(5.7, 2, 2.85)]
+    fn div(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let mut r = x / y;
+        r.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
-    #[test]
-    fn div_decimal_by_int() {
-        let x = Number::Int(1.into());
-        let y = Number::from_f64(2.2).unwrap();
-        assert_eq!(y.order(), NumberOrder::Decimal);
-        let r = x / y;
-        assert_eq!(r.order(), NumberOrder::Decimal);
-        let estr = "0.4545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545454545";
-        let e = Number::from_str(estr).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}",);
+    #[rstest]
+    #[case::div_assign1(1, 1, 1)]
+    #[case::div_assign2(1.1, 2.2, 0.5)]
+    #[case::div_assign3(2, 1.1, 1.81818181818)]
+    #[case::div_assign4(100, 47, 2.12765957447)]
+    #[case::div_assign5(55, 5, 11)]
+    #[case::div_assign6(5.7, 2, 2.85)]
+    fn div_assign(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let mut x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        x /= y;
+        x.set_scale_round(11, RoundingMode::HalfUp);
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
-    #[test]
-    // modulo
-    fn rem_decimals() {
-        let x = Number::from_f64(5.6).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::from_f64(3.2).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
+    #[rstest]
+    #[case::rem1(1, 1, 0)]
+    #[case::rem2(1.1, 2.2, 1.1)]
+    #[case::rem3(2, 1.1, 0.9)]
+    #[case::rem4(100, 47, 6)]
+    #[case::rem5(55, 5, 0)]
+    #[case::rem6(5.7, 2, 1.7)]
+    #[case::rem7(5.6, 3.2, 2.4)]
+    #[case::rem8(5.6, 2, 1.6)]
+    fn rem(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
         let r = x % y;
-        let e = Number::from_f64(2.4).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
-    #[test]
-    // modulo
-    fn rem_decimal_by_int() {
-        let x = Number::from_f64(5.6).unwrap();
-        assert_eq!(x.order(), NumberOrder::Decimal);
-        let y = Number::Int(2.into());
-        let r = x % y;
-        let e = Number::from_f64(1.6).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
+    #[rstest]
+    #[case::rem_assign1(1, 1, 0)]
+    #[case::rem_assign2(1.1, 2.2, 1.1)]
+    #[case::rem_assign3(2, 1.1, 0.9)]
+    #[case::rem_assign4(100, 47, 6)]
+    #[case::rem_assign5(55, 5, 0)]
+    #[case::rem_assign6(5.7, 2, 1.7)]
+    #[case::rem_assign7(5.6, 3.2, 2.4)]
+    #[case::rem_assign8(5.6, 2, 1.6)]
+    fn rem_assign(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let mut x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        x %= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[test]

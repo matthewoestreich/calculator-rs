@@ -36,6 +36,17 @@ result.set_scale(11); // Truncate scale, otherwise scale will be ~100 digits
 println!("{result:?}"); // Number::Decimal(4.54545454545)
 ```
 
+Convenience
+
+```rust
+use calcinum::{Number, ToNumber};
+
+12.to_number(); // Number::Int(12)
+1.1.to_number(); // Number::Decimal(1.1)
+u128::MAX.to_number(); // Number::Int(340282366920938463463374607431768211455)
+i128::MIN.to_number(); // Number::Int(-170141183460469231731687303715884105728)
+```
+
 ## Calculator
 
 ### Simulate Key Press

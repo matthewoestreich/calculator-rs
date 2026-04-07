@@ -309,17 +309,17 @@ macro_rules! match_bitwise {
         match ($lhs, $rhs) {
             (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
             (Number::Decimal(x), Number::Decimal(y)) => {
-                let (x, _) = x.as_bigint_and_scale();
-                let (y, _) = y.as_bigint_and_scale();
-                Number::Int(x.as_ref() $op y.as_ref())
+                let x = bigdecimal_to_bigint(x);
+                let y = bigdecimal_to_bigint(y);
+                Number::Int(x $op y)
             }
             (Number::Int(x), Number::Decimal(y)) => {
-                let (y, _) = y.as_bigint_and_scale();
-                Number::Int(x $op y.as_ref())
+                let y = bigdecimal_to_bigint(y);
+                Number::Int(x $op y)
             }
             (Number::Decimal(x), Number::Int(y)) => {
-                let (x, _) = x.as_bigint_and_scale();
-                Number::Int(x.as_ref() $op y)
+                let x = bigdecimal_to_bigint(x);
+                Number::Int(x $op y)
             }
         }
     };
@@ -328,28 +328,29 @@ macro_rules! match_bitwise {
 /// Expects `$lhs` to be `&Number`
 /// Expects `$rhs` to be `&Number`
 /// Expects `$op` to be a bitwise shift (<< | >>)
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 macro_rules! match_shift {
     ($lhs:expr, $rhs:expr, $op:tt) => {
         match ($lhs, $rhs) {
             (Number::Int(x), Number::Int(y)) => {
-                let x = bigint_to_i128_saturating(x);
                 let y = bigint_to_i128_saturating(y);
-                x $op y
+                Number::from(x $op y)
             }
             (Number::Decimal(x), Number::Decimal(y)) => {
-                let x = bigdecimal_to_i128_saturating(x);
+                let x = bigdecimal_to_bigint(x);
                 let y = bigdecimal_to_i128_saturating(y);
-                x $op y
+                Number::from(x $op y)
             }
             (Number::Int(x), Number::Decimal(y)) => {
-                let x = bigint_to_i128_saturating(x);
                 let y = bigdecimal_to_i128_saturating(y);
-                x $op y
+                Number::from(x $op y)
             }
             (Number::Decimal(x), Number::Int(y)) => {
-                let x = bigdecimal_to_i128_saturating(x);
+                let x = bigdecimal_to_bigint(x);
                 let y = bigint_to_i128_saturating(y);
-                x $op y
+                Number::from(x $op y)
             }
         }
     };
@@ -560,7 +561,7 @@ impl Rem<&Number> for &Number {
 // ========================== BitAndAssign/BitAnd ============================================
 // ===========================================================================================
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitAndAssign<Number> for Number {
     fn bitand_assign(&mut self, rhs: Number) {
@@ -568,7 +569,7 @@ impl BitAndAssign<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitAndAssign<&Number> for Number {
     fn bitand_assign(&mut self, rhs: &Number) {
@@ -576,7 +577,7 @@ impl BitAndAssign<&Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitAnd<Number> for Number {
     type Output = Number;
@@ -587,7 +588,7 @@ impl BitAnd<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitAnd<&Number> for &Number {
     type Output = Number;
@@ -601,7 +602,7 @@ impl BitAnd<&Number> for &Number {
 // ========================== BitOrAssign/BitOr ==============================================
 // ===========================================================================================
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitOrAssign<Number> for Number {
     fn bitor_assign(&mut self, rhs: Number) {
@@ -609,7 +610,7 @@ impl BitOrAssign<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitOrAssign<&Number> for Number {
     fn bitor_assign(&mut self, rhs: &Number) {
@@ -617,7 +618,7 @@ impl BitOrAssign<&Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitOr<Number> for Number {
     type Output = Number;
@@ -628,7 +629,7 @@ impl BitOr<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitOr<&Number> for &Number {
     type Output = Number;
@@ -642,7 +643,7 @@ impl BitOr<&Number> for &Number {
 // ========================== BitXorAssign/BitXor ============================================
 // ===========================================================================================
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitXorAssign<Number> for Number {
     fn bitxor_assign(&mut self, rhs: Number) {
@@ -650,7 +651,7 @@ impl BitXorAssign<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitXorAssign<&Number> for Number {
     fn bitxor_assign(&mut self, rhs: &Number) {
@@ -658,7 +659,7 @@ impl BitXorAssign<&Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitXor<Number> for Number {
     type Output = Number;
@@ -669,7 +670,7 @@ impl BitXor<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int` which
 /// may result in data loss!!
 impl BitXor<&Number> for &Number {
     type Output = Number;
@@ -683,28 +684,27 @@ impl BitXor<&Number> for &Number {
 // ========================== ShlAssign/Shl ==================================================
 // ===========================================================================================
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShlAssign<Number> for Number {
     fn shl_assign(&mut self, rhs: Number) {
         self.shl_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShlAssign<&Number> for Number {
     fn shl_assign(&mut self, rhs: &Number) {
-        let result = match_shift!(&self, rhs, <<);
-        *self = Number::from(result);
+        *self = match_shift!(&self, rhs, <<);
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shl<Number> for Number {
     type Output = Number;
 
@@ -714,15 +714,14 @@ impl Shl<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only left shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shl<&Number> for &Number {
     type Output = Number;
 
     fn shl(self, rhs: &Number) -> Self::Output {
-        let result = match_shift!(self, rhs, <<);
-        Number::from(result)
+        match_shift!(self, rhs, <<)
     }
 }
 
@@ -730,28 +729,27 @@ impl Shl<&Number> for &Number {
 // ========================== ShrAssign/Shr ==================================================
 // ===========================================================================================
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShrAssign<Number> for Number {
     fn shr_assign(&mut self, rhs: Number) {
         self.shr_assign(&rhs);
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl ShrAssign<&Number> for Number {
     fn shr_assign(&mut self, rhs: &Number) {
-        let result = match_shift!(&self, rhs, >>);
-        *self = Number::from(result);
+        *self = match_shift!(&self, rhs, >>);
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shr<Number> for Number {
     type Output = Number;
 
@@ -761,15 +759,14 @@ impl Shr<Number> for Number {
     }
 }
 
-/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
-/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
-/// fit within an i128 it will be saturated, which may result in data loss!
+/// IMPORTANT : If either side is `Number::Deimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only right shift by numbers that fit within an i128! If your right
+/// hand side does not it within an i128 it will be satured, which may result in data loss!
 impl Shr<&Number> for &Number {
     type Output = Number;
 
     fn shr(self, rhs: &Number) -> Self::Output {
-        let result = match_shift!(self, rhs, >>);
-        Number::from(result)
+        match_shift!(self, rhs, >>)
     }
 }
 
@@ -870,6 +867,13 @@ fn bigdecimal_to_i128_saturating(x: &BigDecimal) -> i128 {
     })
 }
 
+// Returns everything to the left of the decimal.
+fn bigdecimal_to_bigint(x: &BigDecimal) -> BigInt {
+    let bi = x.with_scale(0);
+    let (bi, _) = bi.into_bigint_and_scale();
+    bi
+}
+
 // ===========================================================================================
 // ========================== Tests ==========================================================
 // ===========================================================================================
@@ -898,171 +902,151 @@ mod test {
     }
 
     #[rstest]
-    #[case::add1(1, 1, 2)]
-    #[case::add2(1.1, 2.2, 3.3)]
-    #[case::add3(1.1, 2, 3.1)]
-    #[case::add4(2, 1.1, 3.1)]
-    fn add(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::add1("1", "1", "2")]
+    #[case::add2("1.1", "2.2", "3.3")]
+    #[case::add3("1.1", "2", "3.1")]
+    #[case::add4("2", "1.1", "3.1")]
+    fn add(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x + y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::add_assign1(1, 1, 2)]
-    #[case::add_assign2(1.1, 2.2, 3.3)]
-    #[case::add_assign3(1.1, 2, 3.1)]
-    #[case::add_assign4(2, 1.1, 3.1)]
-    fn add_assign(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let mut x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::add_assign1("1", "1", "2")]
+    #[case::add_assign2("1.1", "2.2", "3.3")]
+    #[case::add_assign3("1.1", "2", "3.1")]
+    #[case::add_assign4("2", "1.1", "3.1")]
+    fn add_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         x += y;
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
-    #[case::sub1(1, 1, 0)]
-    #[case::sub2(1.1, 2.2, -1.1)]
-    #[case::sub3(2, 1.1, 0.9)]
-    #[case::sub4(100, 47.4567, 52.5433)]
-    #[case::sub5(5.5, 2.2, 3.3)]
-    fn sub(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::sub1("1", "1", "0")]
+    #[case::sub2("1.1", "2.2", "-1.1")]
+    #[case::sub3("2", "1.1", "0.9")]
+    #[case::sub4("100", "47.4567", "52.5433")]
+    #[case::sub5("5.5", "2.2", "3.3")]
+    fn sub(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x - y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::sub_assign1(1, 1, 0)]
-    #[case::sub_assign2(1.1, 2.2, -1.1)]
-    #[case::sub_assign3(2, 1.1, 0.9)]
-    #[case::sub_assign4(100, 47.4567, 52.5433)]
-    #[case::sub_assign5(5.5, 2.2, 3.3)]
-    fn sub_assign(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let mut x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::sub_assign1("1", "1", "0")]
+    #[case::sub_assign2("1.1", "2.2", "-1.1")]
+    #[case::sub_assign3("2", "1.1", "0.9")]
+    #[case::sub_assign4("100", "47.4567", "52.5433")]
+    #[case::sub_assign5("5.5", "2.2", "3.3")]
+    fn sub_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         x -= y;
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
-    #[case::mul1(1, 1, 1)]
-    #[case::mul2(1.1, 2.2, 2.42)]
-    #[case::mul3(2, 1.1, 2.2)]
-    #[case::mul4(47.4567, 100, 4745.67)]
-    #[case::mul5(55, 22, 1210)]
-    #[case::mul6(5.7, 2, 11.4)]
-    fn mul(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::mul1("1", "1", "1")]
+    #[case::mul2("1.1", "2.2", "2.42")]
+    #[case::mul3("2", "1.1", "2.2")]
+    #[case::mul4("47.4567", "100", "4745.67")]
+    #[case::mul5("55", "22", "1210")]
+    #[case::mul6("5.7", "2", "11.4")]
+    fn mul(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x * y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::mul_assign1(1, 1, 1)]
-    #[case::mul_assign2(1.1, 2.2, 2.42)]
-    #[case::mul_assign3(2, 1.1, 2.2)]
-    #[case::mul_assign4(47.4567, 100, 4745.67)]
-    #[case::mul_assign5(55, 22, 1210)]
-    #[case::mul_assign6(5.7, 2, 11.4)]
-    fn mul_assign(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let mut x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::mul_assign1("1", "1", "1")]
+    #[case::mul_assign2("1.1", "2.2", "2.42")]
+    #[case::mul_assign3("2", "1.1", "2.2")]
+    #[case::mul_assign4("47.4567", "100", "4745.67")]
+    #[case::mul_assign5("55", "22", "1210")]
+    #[case::mul_assign6("5.7", "2", "11.4")]
+    fn mul_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         x *= y;
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
-    #[case::div1(1, 1, 1)]
-    #[case::div2(1.1, 2.2, 0.5)]
-    #[case::div3(2, 1.1, 1.81818181818)]
-    #[case::div4(100, 47, 2.12765957447)]
-    #[case::div5(55, 5, 11)]
-    #[case::div6(5.7, 2, 2.85)]
-    fn div(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::div1("1", "1", "1")]
+    #[case::div2("1.1", "2.2", "0.5")]
+    #[case::div3("2", "1.1", "1.81818181818")]
+    #[case::div4("100", "47", "2.12765957447")]
+    #[case::div5("55", "5", "11")]
+    #[case::div6("5.7", "2", "2.85")]
+    fn div(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let mut r = x / y;
-        r.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
+        r.set_scale_round(11, RoundingMode::HalfUp);
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::div_assign1(1, 1, 1)]
-    #[case::div_assign2(1.1, 2.2, 0.5)]
-    #[case::div_assign3(2, 1.1, 1.81818181818)]
-    #[case::div_assign4(100, 47, 2.12765957447)]
-    #[case::div_assign5(55, 5, 11)]
-    #[case::div_assign6(5.7, 2, 2.85)]
-    fn div_assign(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let mut x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::div_assign1("1", "1", "1")]
+    #[case::div_assign2("1.1", "2.2", "0.5")]
+    #[case::div_assign3("2", "1.1", "1.81818181818")]
+    #[case::div_assign4("100", "47", "2.12765957447")]
+    #[case::div_assign5("55", "5", "11")]
+    #[case::div_assign6("5.7", "2", "2.85")]
+    fn div_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         x /= y;
         x.set_scale_round(11, RoundingMode::HalfUp);
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
-    #[case::rem1(1, 1, 0)]
-    #[case::rem2(1.1, 2.2, 1.1)]
-    #[case::rem3(2, 1.1, 0.9)]
-    #[case::rem4(100, 47, 6)]
-    #[case::rem5(55, 5, 0)]
-    #[case::rem6(5.7, 2, 1.7)]
-    #[case::rem7(5.6, 3.2, 2.4)]
-    #[case::rem8(5.6, 2, 1.6)]
-    fn rem(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::rem1("1", "1", "0")]
+    #[case::rem2("1.1", "2.2", "1.1")]
+    #[case::rem3("2", "1.1", "0.9")]
+    #[case::rem4("100", "47", "6")]
+    #[case::rem5("55", "5", "0")]
+    #[case::rem6("5.7", "2", "1.7")]
+    #[case::rem7("5.6", "3.2", "2.4")]
+    #[case::rem8("5.6", "2", "1.6")]
+    fn rem(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x % y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::rem_assign1(1, 1, 0)]
-    #[case::rem_assign2(1.1, 2.2, 1.1)]
-    #[case::rem_assign3(2, 1.1, 0.9)]
-    #[case::rem_assign4(100, 47, 6)]
-    #[case::rem_assign5(55, 5, 0)]
-    #[case::rem_assign6(5.7, 2, 1.7)]
-    #[case::rem_assign7(5.6, 3.2, 2.4)]
-    #[case::rem_assign8(5.6, 2, 1.6)]
-    fn rem_assign(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let mut x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::rem_assign1("1", "1", "0")]
+    #[case::rem_assign2("1.1", "2.2", "1.1")]
+    #[case::rem_assign3("2", "1.1", "0.9")]
+    #[case::rem_assign4("100", "47", "6")]
+    #[case::rem_assign5("55", "5", "0")]
+    #[case::rem_assign6("5.7", "2", "1.7")]
+    #[case::rem_assign7("5.6", "3.2", "2.4")]
+    #[case::rem_assign8("5.6", "2", "1.6")]
+    fn rem_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         x %= y;
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
@@ -1079,64 +1063,67 @@ mod test {
     }
 
     #[rstest]
-    #[case::bitand1(55, 84, 20)]
-    fn bitand(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
-        let r = x & y;
-        assert_eq!(r, e, "expected {e:?} got {r:?}");
-    }
-
-    #[rstest]
-    #[case::bitor1(55, 84, 119)]
-    fn bitor(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
-        let r = x | y;
-        assert_eq!(r, e, "expected {e:?} got {r:?}");
-    }
-
-    #[rstest]
-    #[case::bitxor1(55, 84, 99)]
-    fn bitxor(
-        #[case] lhs: impl ToNumber,
-        #[case] rhs: impl ToNumber,
-        #[case] expect: impl ToNumber,
-    ) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::bitxor1("55", "84", "99")]
+    #[case::bitxor2("57.284", "98.345", "91")]
+    fn bitxor(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x ^ y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::shl1(55, 8, 14080)]
-    fn shl(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
+    #[case::bitand1("55", "84", "20")]
+    #[case::bitand2("55.4", "77.475", "5")]
+    fn bitand(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x & y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::bitor1("55", "84", "119")]
+    fn bitor(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x | y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::shl1("55", "8", "14080")]
+    #[case::shl2(
+        "9701411834604692317316873037158843484784932105727",
+        "2",
+        "38805647338418769269267492148635373939139728422908"
+    )]
+    #[case::shl_lhs_decimal("10.5", "2", "40")]
+    #[case::shl_lhs_decimal("10.534", "2.234", "40")]
+    fn shl(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
         let r = x << y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 
     #[rstest]
-    #[case::shl1(55, 8, 14080)]
-    fn shl(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
-        let x = lhs.to_number();
-        let y = rhs.to_number();
-        let e = expect.to_number();
-        let r = x << y;
+    #[case::shr1("873", "5", "27")]
+    #[case::shr2(&i128::MAX.to_string(), "2", "42535295865117307932921825928971026431")]
+    #[case::shr_lhs_truncated_to_fit_i128(
+        "34028236692093846346337460743176821145434832943245",
+        "2",
+        "8507059173023461586584365185794205286358708235811"
+    )]
+    fn shr(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x >> y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 }

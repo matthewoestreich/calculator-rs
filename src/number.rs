@@ -795,7 +795,7 @@ impl ShrAssign<Number> for Number {
 
 impl ShrAssign<&Number> for Number {
     fn shr_assign(&mut self, rhs: &Number) {
-        *self = match_shift!(&self, rhs, >>);
+        match_shift_assign!(self, rhs, >>);
     }
 }
 

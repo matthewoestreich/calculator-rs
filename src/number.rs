@@ -173,6 +173,8 @@ impl Number {
         if decimal_str == "0" || decimal_str.is_empty() {
             return "0".to_string();
         }
+        let is_negative = decimal_str.starts_with('-');
+        let decimal_str = decimal_str.trim_start_matches('-');
         let mut digits = Vec::with_capacity(decimal_str.len());
         for c in decimal_str.chars() {
             if let Some(d) = c.to_digit(10) {
@@ -198,6 +200,9 @@ impl Number {
             // The remainder of the full division is our binary digit
             binary_bits.push(if remainder == 0 { '0' } else { '1' });
             digits = next_digits;
+        }
+        if is_negative {
+            binary_bits.push('-');
         }
         // Reverse to get the correct order (MSB first)
         binary_bits.chars().rev().collect()
@@ -1059,9 +1064,17 @@ mod test {
         "17958432089245743489.3597843208120587934",
         "1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
     )]
+    #[case::binary_str_bigdecimal_neg(
+        "-17958432089245743489.3597843208120587934",
+        "-1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
+    )]
     #[case::binary_str2(
         "17958432089245743489",
         "1111100100111001001010101101011001011010011101111111100110000001"
+    )]
+    #[case::binary_str_bigint_neg(
+        "-17958432089245743489",
+        "-1111100100111001001010101101011001011010011101111111100110000001"
     )]
     fn binary_str(#[case] number: &str, #[case] expect: &str) {
         let n = Number::from_str(number).unwrap();

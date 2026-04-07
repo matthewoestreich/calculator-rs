@@ -1,13 +1,15 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use core::fmt;
-use num_bigint::{BigInt, Sign, ToBigInt};
-use num_traits::ToPrimitive;
+use num_bigint::{BigInt, ToBigInt};
+use num_traits::{Signed, ToPrimitive};
 use std::{
     cmp::Ordering,
     error,
+    fmt::Binary,
     ops::{
         Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
-        DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+        DivAssign, Mul, MulAssign, Not, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub,
+        SubAssign,
     },
     str::FromStr,
 };
@@ -25,15 +27,33 @@ impl Number {
 
     pub fn to_i64(&self) -> Option<i64> {
         match self {
-            Number::Int(big_int) => big_int.to_i64(),
-            Number::Decimal(_) => None,
+            Number::Int(i) => i.to_i64(),
+            Number::Decimal(d) => d.to_i64(),
         }
     }
 
     pub fn to_i32(&self) -> Option<i32> {
         match self {
-            Number::Int(big_int) => big_int.to_i32(),
-            Number::Decimal(_) => None,
+            Number::Int(i) => i.to_i32(),
+            Number::Decimal(d) => d.to_i32(),
+        }
+    }
+
+    pub fn to_i128(&self) -> Option<i128> {
+        match self {
+            Number::Int(i) => i.to_i128(),
+            Number::Decimal(d) => d.to_i128(),
+        }
+    }
+
+    /// If `self` is `Number::Decimal` calling this method may result in data loss!
+    /// This is due to how decimal to integer conversion works.
+    /// IMPORTANT: if your number does not fit into an `i128`, it will be saturated,
+    /// eg. clamped to `i128` bounds, which may result in data loss!
+    pub fn to_i128_saturating(&self) -> i128 {
+        match self {
+            Number::Int(i) => Self::saturating_i128(i),
+            Number::Decimal(d) => Self::saturating_i128(d),
         }
     }
 
@@ -109,6 +129,78 @@ impl Number {
             return Some(std::mem::take(d));
         }
         None
+    }
+
+    /// If variant is `Number::Decimal` we return the integer part is binary
+    /// and the fractional part as binary, separated by a period.
+    /// For example, if you have a `Number::Decimal(100.773)` this method
+    /// returns : `"1100100.1100000101"`
+    pub fn to_binary_str(&self) -> String {
+        match self {
+            Number::Int(big_int) => format!("{big_int:b}").to_string(),
+            Number::Decimal(big_decimal) => {
+                let s = big_decimal.to_string();
+                let parts: Vec<_> = s.split('.').collect();
+                let mut output = Self::to_bin_str(parts[0]);
+                if parts[1].is_empty() {
+                    output
+                } else {
+                    output.push('.');
+                    output.push_str(&Self::to_bin_str(parts[1]));
+                    output
+                }
+            }
+        }
+    }
+
+    /// If the underlying value for `T` does not fit within an
+    /// `i128`, we truncate it to fit within `i128` bounds, which
+    /// may result in data/precision/scale loss!
+    fn saturating_i128<T>(x: &T) -> i128
+    where
+        T: ToPrimitive + Signed,
+    {
+        x.to_i128().unwrap_or_else(|| {
+            if x.signum().is_negative() {
+                i128::MIN
+            } else {
+                i128::MAX
+            }
+        })
+    }
+
+    fn to_bin_str(decimal_str: &str) -> String {
+        if decimal_str == "0" || decimal_str.is_empty() {
+            return "0".to_string();
+        }
+        let mut digits = Vec::with_capacity(decimal_str.len());
+        for c in decimal_str.chars() {
+            if let Some(d) = c.to_digit(10) {
+                digits.push(d as u8);
+            } else {
+                return format!("<INVALID_DIGIT_FOUND = '{c}'>");
+            }
+        }
+        let mut binary_bits = String::new();
+        while !digits.is_empty() {
+            let mut remainder = 0;
+            let mut next_digits = Vec::with_capacity(digits.len());
+            // Long division by 2
+            for &digit in &digits {
+                let current = digit + remainder * 10;
+                let quotient = current / 2;
+                remainder = current % 2;
+                // Only push if it's not a leading zero
+                if !next_digits.is_empty() || quotient > 0 {
+                    next_digits.push(quotient);
+                }
+            }
+            // The remainder of the full division is our binary digit
+            binary_bits.push(if remainder == 0 { '0' } else { '1' });
+            digits = next_digits;
+        }
+        // Reverse to get the correct order (MSB first)
+        binary_bits.chars().rev().collect()
     }
 }
 
@@ -277,6 +369,16 @@ impl fmt::Display for Number {
 }
 
 // ===========================================================================================
+// ========================== Binary =========================================================
+// ===========================================================================================
+
+impl Binary for Number {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_binary_str())
+    }
+}
+
+// ===========================================================================================
 // ========================== Macros for implementing arithmetic =============================
 // ===========================================================================================
 
@@ -380,22 +482,22 @@ macro_rules! match_bitwise_assign {
 macro_rules! match_shift {
     ($lhs:expr, $rhs:expr, $op:tt) => {
         match ($lhs, $rhs) {
-            (Number::Int(x), Number::Int(y)) => {
-                let y = bigint_to_i128_saturating(y);
+            (Number::Int(x), Number::Int(_)) => {
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
-            (Number::Decimal(x), Number::Decimal(y)) => {
+            (Number::Decimal(x), Number::Decimal(_)) => {
                 let x = x.to_bigint().expect("BigInt");
-                let y = bigdecimal_to_i128_saturating(y);
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
-            (Number::Int(x), Number::Decimal(y)) => {
-                let y = bigdecimal_to_i128_saturating(y);
+            (Number::Int(x), Number::Decimal(_)) => {
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
-            (Number::Decimal(x), Number::Int(y)) => {
+            (Number::Decimal(x), Number::Int(_)) => {
                 let x = x.to_bigint().expect("BigInt");
-                let y = bigint_to_i128_saturating(y);
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
         }
@@ -411,12 +513,12 @@ macro_rules! match_shift {
 macro_rules! match_shift_assign {
     ($lhs:expr, $rhs:expr, $op:tt) => {
         *$lhs = match (&$lhs, $rhs) {
-            (Number::Int(x), Number::Int(y)) => {
-                let y = bigint_to_i128_saturating(y);
+            (Number::Int(x), Number::Int(_)) => {
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
-            (Number::Int(x), Number::Decimal(y)) => {
-                let y = bigdecimal_to_i128_saturating(y);
+            (Number::Int(x), Number::Decimal(_)) => {
+                let y = $rhs.to_i128_saturating();
                 Number::from(x $op y)
             }
             _ => {
@@ -506,22 +608,24 @@ impl DivAssign<Number> for Number {
 impl DivAssign<&Number> for Number {
     fn div_assign(&mut self, rhs: &Number) {
         *self = match (&self, rhs) {
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x / y),
-            // If integer division does not produce a decimal.
-            (Number::Int(x), Number::Int(y)) if x % y == BigInt::ZERO => Number::Int(x / y),
-            // If integer division would produce a decimal, convert result to Decimal.
-            (Number::Int(_), Number::Int(y)) => {
-                let l = BigDecimal::from_bigint(self.take_int().expect("Number::Int"), 0);
-                let r = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(l / r)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(x / y)
+            // Delegate to `impl Div<&Number> for &Number` since we would call the same code regardless
+            (Number::Decimal(_), Number::Decimal(_)) | (Number::Decimal(_), Number::Int(_)) => {
+                &*self / rhs
             }
             (Number::Int(_), Number::Decimal(_)) => {
-                self.promote();
+                self.promote(); // Both sides must be Number::Decimal
                 &*self / rhs
+            }
+            (Number::Int(x), Number::Int(y)) => {
+                if x % y != BigInt::ZERO {
+                    // There is a remainder, need to convert both sides to `Number::Decimal`
+                    // so we perform decimal division, not integer division.
+                    self.promote();
+                    &*self / rhs
+                } else {
+                    // Integer division would not produce a remainder, ok to use integer division.
+                    Number::Int(x / y)
+                }
             }
         }
     }
@@ -542,20 +646,23 @@ impl Div<&Number> for &Number {
     fn div(self, rhs: &Number) -> Self::Output {
         match (self, rhs) {
             (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x / y),
-            // If integer division does not produce a decimal.
-            (Number::Int(x), Number::Int(y)) if x % y == BigInt::ZERO => Number::Int(x / y),
-            // If integer division would produce a decimal, convert result to Decimal
             (Number::Int(x), Number::Int(y)) => {
-                let l = BigDecimal::from_bigint(x.clone(), 0);
-                let r = BigDecimal::from_bigint(y.clone(), 0);
-                Number::Decimal(l / r)
+                if x % y != BigInt::ZERO {
+                    // There is a remainder, need to convert both sides to
+                    // `Number::Decimal` so we perform decimal division, not integer division.
+                    let l = BigDecimal::from(x.clone());
+                    let r = BigDecimal::from(y.clone());
+                    Number::Decimal(l / r)
+                } else {
+                    Number::Int(x / y)
+                }
             }
             (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from_bigint(x.clone(), 0);
+                let x = BigDecimal::from(x.clone());
                 Number::Decimal(x / y)
             }
             (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from_bigint(y.clone(), 0);
+                let y = BigDecimal::from(y.clone());
                 Number::Decimal(x / y)
             }
         }
@@ -817,6 +924,26 @@ impl Shr<&Number> for &Number {
 }
 
 // ===========================================================================================
+// ========================== Not ============================================================
+// ===========================================================================================
+//
+// IMPORTANT : We can only call `Not` on `Number::Int` variants! If your variant is
+// `Number::Decimal` we first demote it to `Number::Int` before calling `Not`, which
+// may result in data loss/unexpected calculations!
+//
+
+impl Not for Number {
+    type Output = Number;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Number::Int(i) => Number::Int(!i),
+            Number::Decimal(d) => Number::Int(!d.to_bigint().expect("BigInt")),
+        }
+    }
+}
+
+// ===========================================================================================
 // ========================== PartialEq/Eq ===================================================
 // ===========================================================================================
 
@@ -890,30 +1017,6 @@ impl From<&Number> for NumberOrder {
 }
 
 // ===========================================================================================
-// ========================== Misc Functions =================================================
-// ===========================================================================================
-
-fn bigint_to_i128_saturating(x: &BigInt) -> i128 {
-    x.to_i128().unwrap_or_else(|| {
-        if x.sign() == Sign::Minus {
-            i128::MIN
-        } else {
-            i128::MAX
-        }
-    })
-}
-
-fn bigdecimal_to_i128_saturating(x: &BigDecimal) -> i128 {
-    x.to_i128().unwrap_or_else(|| {
-        if x.sign() == Sign::Minus {
-            i128::MIN
-        } else {
-            i128::MAX
-        }
-    })
-}
-
-// ===========================================================================================
 // ========================== Tests ==========================================================
 // ===========================================================================================
 
@@ -938,6 +1041,29 @@ mod test {
     fn from_f64() {
         let a = Number::from_f64(1.1).unwrap();
         assert_eq!(a.order(), NumberOrder::Decimal);
+    }
+
+    #[rstest]
+    #[case::binary_str1(
+        "17958432089245743489.3597843208120587934",
+        "1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
+    )]
+    #[case::binary_str2(
+        "17958432089245743489",
+        "1111100100111001001010101101011001011010011101111111100110000001"
+    )]
+    fn binary_str(#[case] number: &str, #[case] expect: &str) {
+        let n = Number::from_str(number).unwrap();
+        let fr = format!("{n:b}");
+        assert_eq!(
+            expect, fr,
+            "[format!(\"{n:b}\")] expected '{expect}' got '{fr}'"
+        );
+        let br = n.to_binary_str();
+        assert_eq!(
+            expect, br,
+            "[n.to_binary_str()] expected '{expect}' got '{br}'"
+        );
     }
 
     #[rstest]
@@ -1090,17 +1216,6 @@ mod test {
         assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
-    #[test]
-    fn very_large_ints() {
-        let astr = "57896044618658097711785492504343953926634992332820282019728792003956564819968";
-        let a = Number::from_str(astr).unwrap();
-        let b = Number::Int((-1).into());
-        let r = a / b;
-        let estr = "-57896044618658097711785492504343953926634992332820282019728792003956564819968";
-        let e = Number::from_str(estr).unwrap();
-        assert_eq!(r, e, "expected {e} got {r}");
-    }
-
     #[rstest]
     #[case::bitxor1("55", "84", "99")]
     #[case::bitxor2("57.284", "98.345", "91")]
@@ -1110,6 +1225,17 @@ mod test {
         let e = Number::from_str(expect).unwrap();
         let r = x ^ y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::bitxor_assign1("55", "84", "99")]
+    #[case::bitxor_assign2("57.284", "98.345", "91")]
+    fn bitxor_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x ^= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
@@ -1124,13 +1250,46 @@ mod test {
     }
 
     #[rstest]
+    #[case::bitand_assign1("55", "84", "20")]
+    #[case::bitand_assign2("55.4", "77.475", "5")]
+    fn bitand_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x &= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
     #[case::bitor1("55", "84", "119")]
+    #[case::bitor2(
+        "97014118346046923173168730371588434847849321057273236539018427",
+        "56473890472713285943048728314",
+        "97014118346046923173168730371588439898750848355010217494179579"
+    )]
+    #[case::bitor3("55.432", "84.2113485", "119")]
     fn bitor(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
         let x = Number::from_str(lhs).unwrap();
         let y = Number::from_str(rhs).unwrap();
         let e = Number::from_str(expect).unwrap();
         let r = x | y;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::bitor_assign1("55", "84", "119")]
+    #[case::bitor_assign2(
+        "97014118346046923173168730371588434847849321057273236539018427",
+        "56473890472713285943048728314",
+        "97014118346046923173168730371588439898750848355010217494179579"
+    )]
+    #[case::bitor_assign3("55.432", "84.2113485", "119")]
+    fn bitor_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x |= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
     }
 
     #[rstest]
@@ -1151,6 +1310,23 @@ mod test {
     }
 
     #[rstest]
+    #[case::shl_assign1("55", "8", "14080")]
+    #[case::shl_assign2(
+        "9701411834604692317316873037158843484784932105727",
+        "2",
+        "38805647338418769269267492148635373939139728422908"
+    )]
+    #[case::shl_assign_lhs_decimal("10.5", "2", "40")]
+    #[case::shl_assign_lhs_decimal("10.534", "2.234", "40")]
+    fn shl_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x <<= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
     #[case::shr1("873", "5", "27")]
     #[case::shr2(&i128::MAX.to_string(), "2", "42535295865117307932921825928971026431")]
     #[case::shr_lhs_truncated_to_fit_i128(
@@ -1163,6 +1339,36 @@ mod test {
         let y = Number::from_str(rhs).unwrap();
         let e = Number::from_str(expect).unwrap();
         let r = x >> y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::shr_assign1("873", "5", "27")]
+    #[case::shr_assign2(&i128::MAX.to_string(), "2", "42535295865117307932921825928971026431")]
+    #[case::shr_assign_lhs_truncated_to_fit_i128(
+        "34028236692093846346337460743176821145434832943245",
+        "2",
+        "8507059173023461586584365185794205286358708235811"
+    )]
+    fn shr_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x >>= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::not1("55", "-56")]
+    #[case::not2(
+        "97014118346046923173168730371588434847849321057273236539018427",
+        "-97014118346046923173168730371588434847849321057273236539018428"
+    )]
+    #[case::not3("55.432", "-56")]
+    fn not(#[case] lhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = !x;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 }

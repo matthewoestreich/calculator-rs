@@ -1,11 +1,14 @@
 use bigdecimal::{BigDecimal, ParseBigDecimalError};
 use core::fmt;
-use num_bigint::BigInt;
+use num_bigint::{BigInt, Sign};
 use num_traits::ToPrimitive;
 use std::{
     cmp::Ordering,
     error,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, RemAssign, Sub, SubAssign},
+    ops::{
+        Add, AddAssign, BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Div,
+        DivAssign, Mul, MulAssign, Rem, RemAssign, Shl, ShlAssign, Shr, ShrAssign, Sub, SubAssign,
+    },
     str::FromStr,
 };
 
@@ -298,6 +301,60 @@ macro_rules! match_arithmetic_assign {
     };
 }
 
+/// Expects `$lhs` to be `&Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be a bitwise operator (&, |, ^)
+macro_rules! match_bitwise {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        match ($lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => Number::Int(x $op y),
+            (Number::Decimal(x), Number::Decimal(y)) => {
+                let (x, _) = x.as_bigint_and_scale();
+                let (y, _) = y.as_bigint_and_scale();
+                Number::Int(x.as_ref() $op y.as_ref())
+            }
+            (Number::Int(x), Number::Decimal(y)) => {
+                let (y, _) = y.as_bigint_and_scale();
+                Number::Int(x $op y.as_ref())
+            }
+            (Number::Decimal(x), Number::Int(y)) => {
+                let (x, _) = x.as_bigint_and_scale();
+                Number::Int(x.as_ref() $op y)
+            }
+        }
+    };
+}
+
+/// Expects `$lhs` to be `&Number`
+/// Expects `$rhs` to be `&Number`
+/// Expects `$op` to be a bitwise shift (<< | >>)
+macro_rules! match_shift {
+    ($lhs:expr, $rhs:expr, $op:tt) => {
+        match ($lhs, $rhs) {
+            (Number::Int(x), Number::Int(y)) => {
+                let x = bigint_to_i128_saturating(x);
+                let y = bigint_to_i128_saturating(y);
+                x $op y
+            }
+            (Number::Decimal(x), Number::Decimal(y)) => {
+                let x = bigdecimal_to_i128_saturating(x);
+                let y = bigdecimal_to_i128_saturating(y);
+                x $op y
+            }
+            (Number::Int(x), Number::Decimal(y)) => {
+                let x = bigint_to_i128_saturating(x);
+                let y = bigdecimal_to_i128_saturating(y);
+                x $op y
+            }
+            (Number::Decimal(x), Number::Int(y)) => {
+                let x = bigdecimal_to_i128_saturating(x);
+                let y = bigint_to_i128_saturating(y);
+                x $op y
+            }
+        }
+    };
+}
+
 // ===========================================================================================
 // ========================== AddAssign/Add ==================================================
 // ===========================================================================================
@@ -500,6 +557,223 @@ impl Rem<&Number> for &Number {
 }
 
 // ===========================================================================================
+// ========================== BitAndAssign/BitAnd ============================================
+// ===========================================================================================
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitAndAssign<Number> for Number {
+    fn bitand_assign(&mut self, rhs: Number) {
+        self.bitand_assign(&rhs);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitAndAssign<&Number> for Number {
+    fn bitand_assign(&mut self, rhs: &Number) {
+        *self = match_bitwise!(&self, rhs, &);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitAnd<Number> for Number {
+    type Output = Number;
+
+    fn bitand(mut self, rhs: Number) -> Self::Output {
+        self.bitand_assign(&rhs);
+        self
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitAnd<&Number> for &Number {
+    type Output = Number;
+
+    fn bitand(self, rhs: &Number) -> Self::Output {
+        match_bitwise!(self, rhs, &)
+    }
+}
+
+// ===========================================================================================
+// ========================== BitOrAssign/BitOr ==============================================
+// ===========================================================================================
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitOrAssign<Number> for Number {
+    fn bitor_assign(&mut self, rhs: Number) {
+        self.bitor_assign(&rhs);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitOrAssign<&Number> for Number {
+    fn bitor_assign(&mut self, rhs: &Number) {
+        *self = match_bitwise!(&self, rhs, |);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitOr<Number> for Number {
+    type Output = Number;
+
+    fn bitor(mut self, rhs: Number) -> Self::Output {
+        self.bitor_assign(&rhs);
+        self
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitOr<&Number> for &Number {
+    type Output = Number;
+
+    fn bitor(self, rhs: &Number) -> Self::Output {
+        match_bitwise!(self, rhs, |)
+    }
+}
+
+// ===========================================================================================
+// ========================== BitXorAssign/BitXor ============================================
+// ===========================================================================================
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitXorAssign<Number> for Number {
+    fn bitxor_assign(&mut self, rhs: Number) {
+        self.bitxor_assign(&rhs);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitXorAssign<&Number> for Number {
+    fn bitxor_assign(&mut self, rhs: &Number) {
+        *self = match_bitwise!(&self, rhs, ^);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitXor<Number> for Number {
+    type Output = Number;
+
+    fn bitxor(mut self, rhs: Number) -> Self::Output {
+        self.bitxor_assign(&rhs);
+        self
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int` which
+/// may result in data loss!!
+impl BitXor<&Number> for &Number {
+    type Output = Number;
+
+    fn bitxor(self, rhs: &Number) -> Self::Output {
+        match_bitwise!(self, rhs, ^)
+    }
+}
+
+// ===========================================================================================
+// ========================== ShlAssign/Shl ==================================================
+// ===========================================================================================
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl ShlAssign<Number> for Number {
+    fn shl_assign(&mut self, rhs: Number) {
+        self.shl_assign(&rhs);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl ShlAssign<&Number> for Number {
+    fn shl_assign(&mut self, rhs: &Number) {
+        let result = match_shift!(&self, rhs, <<);
+        *self = Number::from(result);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl Shl<Number> for Number {
+    type Output = Number;
+
+    fn shl(mut self, rhs: Number) -> Self::Output {
+        self.shl_assign(&rhs);
+        self
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shl on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl Shl<&Number> for &Number {
+    type Output = Number;
+
+    fn shl(self, rhs: &Number) -> Self::Output {
+        let result = match_shift!(self, rhs, <<);
+        Number::from(result)
+    }
+}
+
+// ===========================================================================================
+// ========================== ShrAssign/Shr ==================================================
+// ===========================================================================================
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl ShrAssign<Number> for Number {
+    fn shr_assign(&mut self, rhs: Number) {
+        self.shr_assign(&rhs);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl ShrAssign<&Number> for Number {
+    fn shr_assign(&mut self, rhs: &Number) {
+        let result = match_shift!(&self, rhs, >>);
+        *self = Number::from(result);
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl Shr<Number> for Number {
+    type Output = Number;
+
+    fn shr(mut self, rhs: Number) -> Self::Output {
+        self.shr_assign(&rhs);
+        self
+    }
+}
+
+/// IMPORTANT : If called on `Number::Decimal` variant, we demote it to `Number::Int`.
+/// IMPORTANT : We can only call shr on numbers that fit within i128, so if your number does not
+/// fit within an i128 it will be saturated, which may result in data loss!
+impl Shr<&Number> for &Number {
+    type Output = Number;
+
+    fn shr(self, rhs: &Number) -> Self::Output {
+        let result = match_shift!(self, rhs, >>);
+        Number::from(result)
+    }
+}
+
+// ===========================================================================================
 // ========================== PartialEq/Eq ===================================================
 // ===========================================================================================
 
@@ -570,6 +844,30 @@ impl From<&Number> for NumberOrder {
             Number::Decimal(_) => Self::Decimal,
         }
     }
+}
+
+// ===========================================================================================
+// ========================== Misc Functions =================================================
+// ===========================================================================================
+
+fn bigint_to_i128_saturating(x: &BigInt) -> i128 {
+    x.to_i128().unwrap_or_else(|| {
+        if x.sign() == Sign::Minus {
+            i128::MIN
+        } else {
+            i128::MAX
+        }
+    })
+}
+
+fn bigdecimal_to_i128_saturating(x: &BigDecimal) -> i128 {
+    x.to_i128().unwrap_or_else(|| {
+        if x.sign() == Sign::Minus {
+            i128::MIN
+        } else {
+            i128::MAX
+        }
+    })
 }
 
 // ===========================================================================================
@@ -778,5 +1076,67 @@ mod test {
         let estr = "-57896044618658097711785492504343953926634992332820282019728792003956564819968";
         let e = Number::from_str(estr).unwrap();
         assert_eq!(r, e, "expected {e} got {r}");
+    }
+
+    #[rstest]
+    #[case::bitand1(55, 84, 20)]
+    fn bitand(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let r = x & y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::bitor1(55, 84, 119)]
+    fn bitor(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let r = x | y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::bitxor1(55, 84, 99)]
+    fn bitxor(
+        #[case] lhs: impl ToNumber,
+        #[case] rhs: impl ToNumber,
+        #[case] expect: impl ToNumber,
+    ) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let r = x ^ y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::shl1(55, 8, 14080)]
+    fn shl(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let r = x << y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::shl1(55, 8, 14080)]
+    fn shl(#[case] lhs: impl ToNumber, #[case] rhs: impl ToNumber, #[case] expect: impl ToNumber) {
+        let x = lhs.to_number();
+        let y = rhs.to_number();
+        let e = expect.to_number();
+        let r = x << y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
 }

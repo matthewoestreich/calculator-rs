@@ -402,8 +402,8 @@ mod test {
     use super::*;
     use rstest::*;
 
-    fn rpn_tokens_to_str(rpn_tokens: &[Token]) -> String {
-        rpn_tokens
+    fn tokens_to_str(tokens: &[Token]) -> String {
+        tokens
             .iter()
             .fold(String::new(), |acc, x| format!("{acc} {x}"))
             .trim()
@@ -438,7 +438,7 @@ mod test {
             Ok(t) => t,
             Err(e) => panic!("PARSER ERROR = {e:?}"),
         };
-        let rpn_str = rpn_tokens_to_str(&rpn_tokens);
+        let rpn_str = tokens_to_str(&rpn_tokens);
         assert_eq!(
             rpn_str,
             String::from(expect_rpn),

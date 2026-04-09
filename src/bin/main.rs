@@ -5,11 +5,9 @@ const EXPECTED_ARGS_LEN: usize = 1;
 
 fn main() {
     let args: Vec<_> = env::args().skip(1).collect();
-
     validate_argc(args.len());
-    let arg = args.first().expect("verified argc > 0");
 
-    match arg.as_str() {
+    match args.first().expect("verified argc > 0").as_str() {
         "--version" | "-v" => {
             println!("{}", env!("CARGO_PKG_VERSION"));
             process::exit(0);

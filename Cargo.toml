@@ -6,8 +6,8 @@ authors = ["Matt Oestreich"]
 description = "Calculator capable of handling arbitrarily large numbers"
 license = "GPL-3.0-or-later OR MIT"
 readme = "README.md"
-repository = "https://github.com/matthewoestreich/calculator-rs"
-homepage = "https://github.com/matthewoestreich/calculator-rs#README.md"
+repository = "https://github.com/matthewoestreich/calcinum"
+homepage = "https://github.com/matthewoestreich/calcinum#README.md"
 keywords = ["calculator", "math", "mathematics", "bigint", "bigdecimal"]
 categories = [
   "mathematics",

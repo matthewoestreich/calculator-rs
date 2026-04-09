@@ -75,18 +75,22 @@ impl fmt::Display for Operator {
 #[derive(Debug, Clone)]
 pub enum Function {
     Abs,
+    Floor,
 }
 
 impl FromStr for Function {
     type Err = ParserError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "abs" => Ok(Self::Abs),
-            _ => Err(ParserError::UnrecognizedFunction {
-                name: s.to_string(),
-            }),
-        }
+        Ok(match s {
+            "abs" => Self::Abs,
+            "floor" => Self::Floor,
+            _ => {
+                return Err(ParserError::UnrecognizedFunction {
+                    name: s.to_string(),
+                });
+            }
+        })
     }
 }
 
@@ -95,6 +99,7 @@ impl fmt::Display for Function {
         // All functions should be lower case!
         match self {
             Function::Abs => write!(f, "abs"),
+            Function::Floor => write!(f, "floor"),
         }
     }
 }
@@ -349,6 +354,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
 
                 stack.push(match f {
                     Function::Abs => x.abs(),
+                    Function::Floor => x.floor(),
                 });
             }
             Token::Operator(o) => {
@@ -583,6 +589,7 @@ mod test {
     #[case::evaluate_nested_func("abs( 10 - abs( ( 2 + 2 ) - 10 ) )", "4")]
     #[case::evaluate_nested_func_with_neg("-abs( 10 - abs( -( 2 + 2 ) - 10 ) )", "-4")]
     #[case::evaluate11("!abs(-abs(2+3))", "-6")]
+    #[case::evaluate_floor("1 + floor(11.5 + 10.2)", "22.0")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,

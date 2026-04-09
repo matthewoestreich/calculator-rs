@@ -352,7 +352,7 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
 // ========================== Eval ===========================================================
 // ===========================================================================================
 
-// Expects tokens in reverse polish notation
+/// Expects tokens in reverse polish notation
 pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     if rpn_tokens.is_empty() {
         return Err(ParserError::EmptyExpression);

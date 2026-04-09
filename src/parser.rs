@@ -298,10 +298,18 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
             Token::Number(_) => output.push(token),
             Token::Function(_) | Token::ParenthesesOpen => stack.push(token),
             Token::ParenthesesClose => {
-                while let Some(t) = stack.pop()
-                    && !matches!(t, Token::ParenthesesOpen)
-                {
+                let mut found_open_paren = false;
+
+                while let Some(t) = stack.pop() {
+                    if matches!(t, Token::ParenthesesOpen) {
+                        found_open_paren = true;
+                        break;
+                    }
                     output.push(t);
+                }
+
+                if !found_open_paren {
+                    return Err(ParserError::MissingOpeningParentheses);
                 }
 
                 if matches!(stack.last(), Some(Token::Function(_))) {
@@ -331,6 +339,9 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
     }
 
     while let Some(p) = stack.pop() {
+        if matches!(p, Token::ParenthesesOpen) {
+            return Err(ParserError::MissingClosingParentheses);
+        }
         output.push(p);
     }
 
@@ -352,6 +363,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     for token in rpn_tokens {
         match token {
             Token::Number(n) => stack.push(n),
+
             Token::Function(f) => {
                 let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
 
@@ -361,6 +373,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     Function::Ceil => x.ceil(),
                 });
             }
+
             Token::Operator(o) => {
                 if o.is_unary() {
                     let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
@@ -391,6 +404,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     })
                 }
             }
+
             _ => return Err(ParserError::UnexpectedToken(token)),
         }
     }
@@ -442,6 +456,8 @@ pub enum ParserError {
     },
     InvalidNumber(String),
     NumberErr(NumberError),
+    MissingClosingParentheses,
+    MissingOpeningParentheses,
     BigDecimalErr(ParseBigDecimalError),
 }
 
@@ -461,6 +477,12 @@ impl fmt::Display for ParserError {
             ParserError::InvalidNumber(n_str) => write!(f, "invalid number : '{n_str}'"),
             ParserError::BigDecimalErr(e) => write!(f, "error parsing BigDecimal : {e}"),
             ParserError::NumberErr(ne) => write!(f, "{ne}"),
+            ParserError::MissingOpeningParentheses => {
+                write!(f, "expression missing opening parentheses")
+            }
+            ParserError::MissingClosingParentheses => {
+                write!(f, "expression missing closing parentheses")
+            }
             ParserError::UnexpectedChar(c) => write!(f, "unexpected char '{c}'"),
             ParserError::UnexpectedToken(got) => {
                 write!(f, "got '{got}' and did not expect to")

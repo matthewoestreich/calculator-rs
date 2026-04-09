@@ -1507,8 +1507,11 @@ mod test {
 
     #[rstest]
     #[case::abs1("10", "10")]
+    #[case::abs1_1("10.123", "10.123")]
     #[case::abs2("-10", "10")]
+    #[case::abs2_1("-10.123", "10.123")]
     #[case::abs3("0", "0")]
+    #[case::abs3_1("-0", "0")]
     fn abs(#[case] n: &str, #[case] expect: &str) {
         let x = n.parse::<Number>().unwrap();
         let e = expect.parse::<Number>().unwrap();

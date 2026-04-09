@@ -30,7 +30,8 @@ impl Operator {
 
     /// This method assumes you have already verified the first char!
     /// What you are passing in would be the second char.
-    pub fn is_two_char_infix(second_char: &char) -> bool {
+    /// Example of two-character operators : `**`, `<<`, `>>`
+    pub fn has_two_chars(second_char: &char) -> bool {
         matches!(second_char, '*' | '<' | '>')
     }
 
@@ -178,6 +179,10 @@ impl fmt::Display for Token {
 // ===========================================================================================
 
 pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
+    if expression.is_empty() {
+        return Err(ParserError::EmptyExpression);
+    }
+
     let mut tokens = Vec::<Token>::new();
     let mut iter = expression.chars().peekable();
 
@@ -215,8 +220,8 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 }));
             }
 
-            // Two-character infix operators.
-            '*' | '<' | '>' if iter.peek().is_some_and(Operator::is_two_char_infix) => {
+            // Two-character operators, e.g., `**`, `<<`, `>>`
+            '*' | '<' | '>' if iter.peek().is_some_and(Operator::has_two_chars) => {
                 let sc = iter.next().expect("just validated next via peek");
 
                 tokens.push(Token::Operator(match sc {
@@ -227,7 +232,7 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 }));
             }
 
-            // Single-character infix operators.
+            // Single-character operators.
             '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' => {
                 tokens.push(Token::Operator(match c {
                     '+' => Operator::Add,
@@ -276,6 +281,10 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
 /// Uses shunting yard algorithm.
 /// Returns `Vec<Token>` in reverse polish notation.
 pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
+    if infix_tokens.is_empty() {
+        return Err(ParserError::EmptyExpression);
+    }
+
     let mut output = vec![];
     let mut stack = vec![];
 
@@ -377,7 +386,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     })
                 }
             }
-            _ => return Err(ParserError::UnexpectedEvalFallThru(token)),
+            _ => return Err(ParserError::UnexpectedToken(token)),
         }
     }
 
@@ -385,7 +394,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     if stack.len() != 1 {
         return Err(ParserError::InvalidExpression);
     }
-    Ok(stack.pop().expect("one stack element"))
+    Ok(stack.pop().expect("just verified len"))
 }
 
 // ===========================================================================================
@@ -420,8 +429,8 @@ pub enum ParserError {
     ExpectedFunction(Token),
     /// `Token` argument is what you got instead
     ExpectedOperator(Token),
-    /// `Token` is what you got
-    UnexpectedEvalFallThru(Token),
+    /// `Token` is what you got, not what you expected
+    UnexpectedToken(Token),
     UnexpectedChar(char),
     InvalidExponent {
         exponent_str: String,
@@ -448,8 +457,8 @@ impl fmt::Display for ParserError {
             ParserError::BigDecimalErr(e) => write!(f, "error parsing BigDecimal : {e}"),
             ParserError::NumberErr(ne) => write!(f, "{ne}"),
             ParserError::UnexpectedChar(c) => write!(f, "unexpected char '{c}'"),
-            ParserError::UnexpectedEvalFallThru(got) => {
-                write!(f, "fell thru token evaluation : got '{got}'")
+            ParserError::UnexpectedToken(got) => {
+                write!(f, "got '{got}' and did not expect to")
             }
             ParserError::InvalidExponent { exponent_str } => write!(
                 f,

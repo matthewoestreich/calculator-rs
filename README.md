@@ -10,7 +10,7 @@ Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunti
 - Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
 - Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
   - e.g., `0.1 + 0.2 = 0.3`, `2 - 1.1 = 0.9`, `1 / 2 = 0.5`
-- Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. Operands are coerced into integers before the operation.
+- Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
   - e.g., `2.2 << 2 = 8` (coerced into `2 << 2`)
 
 # Operators

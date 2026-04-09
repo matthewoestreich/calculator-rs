@@ -11,9 +11,11 @@ Parses infix string via the [shunting yard](https://en.wikipedia.org/wiki/Shunti
 - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
 - Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
 - Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
-  - e.g., `0.1 + 0.2 = 0.3`, `2 - 1.1 = 0.9`, `1 / 2 = 0.5`
+  - `0.1 + 0.2 = 0.3`
+  - `2 - 1.1 = 0.9`
+  - `1 / 2 = 0.5`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
-  - e.g., `2.2 << 2 = 8` (coerced into `2 << 2`)
+  - `2.2 << 2 = 8` (coerced into `2 << 2`)
 
 # Operators
 
@@ -41,7 +43,7 @@ You can provide functions within an infix expression.
 
 To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
 
-For example: `abs(1 + ceil(100 / 33) - (12 +13)) / 2`
+For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 
 | Function | Definition                                                |
 | -------- | --------------------------------------------------------- |

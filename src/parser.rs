@@ -145,8 +145,6 @@ impl Token {
     /// We use "C-style" operator precedence.
     pub fn precedence(&self) -> i32 {
         match self {
-            // Functions have the highest priority
-            Token::Function(_) => 100,
             Token::Operator(o) => match o {
                 Operator::Negate | Operator::Not => 8,
                 Operator::Exponentiation => 7,

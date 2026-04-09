@@ -30,7 +30,7 @@ impl Operator {
 
     /// This method assumes you have already verified the first char!
     /// What you are passing in would be the second char.
-    pub fn is_multichar_infix(second_char: &char) -> bool {
+    pub fn is_two_char_infix(second_char: &char) -> bool {
         matches!(second_char, '*' | '<' | '>')
     }
 
@@ -215,25 +215,20 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 }));
             }
 
-            // Infix operators
+            // Two-character infix operators.
+            '*' | '<' | '>' if iter.peek().is_some_and(Operator::is_two_char_infix) => {
+                let sc = iter.next().expect("just validated next via peek");
+
+                tokens.push(Token::Operator(match sc {
+                    '*' => Operator::Exponentiation,
+                    '<' => Operator::ShiftLeft,
+                    '>' => Operator::ShiftRight,
+                    _ => return Err(ParserError::UnexpectedChar(c)),
+                }));
+            }
+
+            // Single-character infix operators.
             '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' => {
-                // Multi-character infix operator check and parsing.
-                if let Some(p) = iter.peek()
-                    && Operator::is_multichar_infix(p)
-                {
-                    tokens.push(Token::Operator(match p {
-                        '*' => Operator::Exponentiation,
-                        '<' => Operator::ShiftLeft,
-                        '>' => Operator::ShiftRight,
-                        _ => return Err(ParserError::UnexpectedChar(c)),
-                    }));
-
-                    // Skip peeked char
-                    _ = iter.next();
-                    continue;
-                }
-
-                // Single-character infix operator parsing.
                 tokens.push(Token::Operator(match c {
                     '+' => Operator::Add,
                     '-' => Operator::Subtract,
@@ -264,7 +259,6 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                     .map_err(|_| ParserError::InvalidNumber(num_str))?;
 
                 tokens.push(Token::Number(number));
-                continue;
             }
 
             // Should be unreachable
@@ -288,13 +282,11 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
     for token in infix_tokens {
         match token {
             Token::Number(_) => output.push(token),
-            Token::Function(_) => stack.push(token),
-            Token::ParenthesesOpen => stack.push(token),
+            Token::Function(_) | Token::ParenthesesOpen => stack.push(token),
             Token::ParenthesesClose => {
-                while let Some(t) = stack.pop() {
-                    if matches!(t, Token::ParenthesesOpen) {
-                        break;
-                    }
+                while let Some(t) = stack.pop()
+                    && !matches!(t, Token::ParenthesesOpen)
+                {
                     output.push(t);
                 }
 
@@ -385,7 +377,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     })
                 }
             }
-            _ => return Err(ParserError::ExpectedOperator(token)),
+            _ => return Err(ParserError::UnexpectedEvalFallThru(token)),
         }
     }
 
@@ -397,7 +389,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
 }
 
 // ===========================================================================================
-// ========================== TryFrom<Token> for Number ======================================
+// ========================== TryFrom impl(s) for Number =====================================
 // ===========================================================================================
 
 impl TryFrom<&Token> for Number {
@@ -428,6 +420,8 @@ pub enum ParserError {
     ExpectedFunction(Token),
     /// `Token` argument is what you got instead
     ExpectedOperator(Token),
+    /// `Token` is what you got
+    UnexpectedEvalFallThru(Token),
     UnexpectedChar(char),
     InvalidExponent {
         exponent_str: String,
@@ -454,6 +448,9 @@ impl fmt::Display for ParserError {
             ParserError::BigDecimalErr(e) => write!(f, "error parsing BigDecimal : {e}"),
             ParserError::NumberErr(ne) => write!(f, "{ne}"),
             ParserError::UnexpectedChar(c) => write!(f, "unexpected char '{c}'"),
+            ParserError::UnexpectedEvalFallThru(got) => {
+                write!(f, "fell thru token evaluation : got '{got}'")
+            }
             ParserError::InvalidExponent { exponent_str } => write!(
                 f,
                 "{exponent_str} : is either Number::Decimal(x) or is unable to be represented by an i64 (eg. it is a float, etc..)"
@@ -494,7 +491,6 @@ mod test {
     }
 
     #[rstest]
-    // Uses the `Display` impls for `expect_tokens`.
     #[case::tokenization1("2 + abs((2+2)-10)", "2 ADD abs ( ( 2 ADD 2 ) SUB 10 )")]
     #[case::tokenization2(
         "abs( 10 - abs( ( 2 + 2 ) - 10 ) )",
@@ -504,6 +500,7 @@ mod test {
         "-abs( 10 - abs( -( 2 + 2 ) - 10 ) )",
         "NEG abs ( 10 SUB abs ( NEG ( 2 ADD 2 ) SUB 10 ) )"
     )]
+    // Uses the `Display` impls for `expect_tokens`.
     fn tokenization(#[case] raw_infix: &str, #[case] expect_tokens: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,
@@ -581,6 +578,7 @@ mod test {
     #[case::evaluate_func("2 + abs((2+2)-10)", "8")]
     #[case::evaluate_nested_func("abs( 10 - abs( ( 2 + 2 ) - 10 ) )", "4")]
     #[case::evaluate_nested_func_with_neg("-abs( 10 - abs( -( 2 + 2 ) - 10 ) )", "-4")]
+    #[case::evaluate11("!abs(-abs(2+3))", "-6")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,

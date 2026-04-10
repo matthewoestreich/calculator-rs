@@ -4,11 +4,8 @@ mod context;
 
 use calcinum::parse_expression;
 use context::Context;
-use std::{
-    env,
-    io::{Write, stdin, stdout},
-    process,
-};
+use rustyline::DefaultEditor;
+use std::{env, process};
 
 const EXPECTED_ARGS_LEN: usize = 1;
 
@@ -47,6 +44,7 @@ fn main() {
 }
 
 fn repl_mode() {
+    let mut rl = DefaultEditor::new().expect("rustyline");
     let mut ctx = Context::new();
 
     // ADD YOUR COMMAND AND DESCRIPTION HERE SO IT
@@ -62,26 +60,25 @@ fn repl_mode() {
     print_commands(&commands);
 
     loop {
-        let mut input_buf = String::new();
+        let line = rl.readline(&format!("[{}]> ", format_cyan!("{}", ctx.size() + 1)));
 
-        ctx.print_prefix();
-
-        stdout().flush().expect("failed to flush stdout");
-
-        stdin()
-            .read_line(&mut input_buf)
-            .expect("failed to read line");
-
-        let input = input_buf.trim();
-
-        // ADD YOUR COMMAND'S "HANDLER" HERE!
-        match input {
-            "clear" => clear_screen!(),
-            "reset" => ctx.reset(),
-            "history" => ctx.print_history(),
-            "exit" => break,
-            "commands" => print_commands(&commands),
-            s => ctx.parse(s),
+        match line {
+            Ok(input) => {
+                //
+                // ADD YOUR COMMAND'S "HANDLER" HERE!
+                //
+                let input = input.as_str();
+                match input {
+                    "clear" => clear_screen!(),
+                    "reset" => ctx.reset(),
+                    "history" => ctx.print_history(),
+                    "exit" => break,
+                    "commands" => print_commands(&commands),
+                    s => ctx.parse(s),
+                };
+                rl.add_history_entry(input).expect("input added to history");
+            }
+            Err(_) => break,
         }
     }
 }

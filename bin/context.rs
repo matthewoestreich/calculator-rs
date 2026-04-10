@@ -13,17 +13,16 @@ impl Context {
         Self::default()
     }
 
-    pub fn print_prefix(&self) {
-        print!("[");
-        print_cyan!("@{}", self.history.len() + 1);
-        print!("]> ");
+    pub fn size(&self) -> usize {
+        self.history.len()
     }
 
     pub fn print_history(&self) {
-        for (i, (_, r)) in self.history.iter().enumerate() {
+        for (i, (e, r)) in self.history.iter().enumerate() {
             let i = i + 1;
             let res = r.as_deref().unwrap_or("ERROR");
-            println_green!("@{i}\t= {res}");
+            print_green!("@{i}");
+            println!("\n  expression = '{e}'\n  result     = '{res}'");
         }
     }
 

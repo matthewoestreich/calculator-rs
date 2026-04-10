@@ -14,14 +14,20 @@ macro_rules! println_green {
     };
 }
 
-macro_rules! print_cyan {
+macro_rules! print_green {
     ($($arg:tt)*) => {
-        print!("\x1b[96m{}\x1b[0m", format_args!($($arg)*));
+        print!("\x1b[92m{}\x1b[0m", format_args!($($arg)*));
     };
 }
 
 macro_rules! print_magenta {
     ($($arg:tt)*) => {
         print!("\x1b[95m{}\x1b[0m", format_args!($($arg)*));
+    };
+}
+
+macro_rules! format_cyan {
+    ($($arg:tt)*) => {
+        format!("\x1b[96m{}\x1b[0m", format_args!($($arg)*))
     };
 }

@@ -1,5 +1,9 @@
 macro_rules! clear_screen {
-    () => {{ print!("\x1B[2J\x1B[1;1H") }};
+    () => {{
+        print!("\x1B[2J\x1B[1;1H");
+        use std::io::{Write, stdout};
+        stdout().flush().unwrap();
+    }};
 }
 
 macro_rules! println_red {

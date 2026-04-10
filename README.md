@@ -99,15 +99,15 @@ exit          exits the repl
 history       prints available history
 commands      prints this message
 
-[1]> 1+1
+[@1]> 1+1
 2
-[2]> floor(112.134)
+[@2]> floor(112.134)
 112
-[3]> 3*3-(@1+10)
+[@3]> 3*3-(@1+10)
 -3
-[4]> abs(@3)
+[@4]> abs(@3)
 3
-[5]> @10+1
+[@5]> @10+1
 
 Line '10' does not exist.
 
@@ -127,9 +127,9 @@ Line '10' does not exist.
 @5
   expression = '@10+1'
   result     = 'ERROR'
-[6]> reset
+[@6]> reset
 --- HISTORY RESET ---
-[1]>
+[@1]>
 ```
 
 # Library Usage

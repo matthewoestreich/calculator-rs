@@ -60,7 +60,7 @@ fn repl_mode() {
     print_commands(&commands);
 
     loop {
-        let line = rl.readline(&format!("[{}]> ", format_cyan!("{}", ctx.size() + 1)));
+        let line = rl.readline(&format!("[{}]> ", format_cyan!("@{}", ctx.size() + 1)));
 
         match line {
             Ok(input) => {

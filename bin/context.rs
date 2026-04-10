@@ -36,34 +36,33 @@ impl Context {
         let mut iter = expression.chars().peekable();
 
         while let Some(c) = iter.next() {
-            match c {
-                '@' => {
-                    let Some(i) = self.parse_history_ref(&mut iter) else {
-                        println_red!(
-                            "\nUnable to parse provided line. Expected format is '@1' where '1' is the target line.\n"
-                        );
-                        self.push_history(expression, None);
-                        return;
-                    };
+            if c != '@' {
+                output.push(c);
+            } else {
+                // c == '@' here
+                let Some(i) = self.parse_history_ref(&mut iter) else {
+                    println_red!(
+                        "\nUnable to parse provided line. Expected format is '@1' where '1' is the target line.\n"
+                    );
+                    self.push_history(expression, None);
+                    return;
+                };
 
-                    if i == 0 || i > self.history.len() {
-                        println_red!("\nLine '{i}' does not exist.\n");
-                        self.push_history(expression, None);
-                        return;
-                    }
-
-                    let Some(val) = self.resolve_history(i) else {
-                        println_red!(
-                            "\nLine '{i}' had an error result. Error results cannot be used in expressions.\n"
-                        );
-                        self.push_history(expression, None);
-                        return;
-                    };
-
-                    output.push_str(val);
+                if i == 0 || i > self.history.len() {
+                    println_red!("\nLine '{i}' does not exist.\n");
+                    self.push_history(expression, None);
+                    return;
                 }
 
-                _ => output.push(c),
+                let Some(val) = self.resolve_history(i) else {
+                    println_red!(
+                        "\nLine '{i}' had an error result. Error results cannot be used in expressions.\n"
+                    );
+                    self.push_history(expression, None);
+                    return;
+                };
+
+                output.push_str(val);
             }
         }
 

@@ -53,7 +53,17 @@ For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 
 # CLI Usage
 
-Except for `--version` and `-v` (which display the current version), the CLI accepts a single unnamed argument: a valid infix expression provided as a string. The expression must be enclosed in single or double quotes — **single quotes are recommended**.
+| Description                                                                                      | Argument         | Shorthand |
+| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
+| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
+| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
+| Display current version.                                                                         | `--version`      | `-v`      |
+
+## Command Mode
+
+Command mode operates as a standard CLI interface, accepting a command and writing its output to the terminal.
+
+**Command mode examples:**
 
 ```
 $ calcinum --version
@@ -68,6 +78,44 @@ $ calcinum 'abs(-10)'
 10
 $ calcinum '!abs(-10)'
 -11
+```
+
+## Shell Mode
+
+Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using @N, where N denotes the line number of the referenced result.
+
+Shell mode comes with a few extra commands, just type `commands` to view them.
+
+**Shell mode examples:**
+
+```
+$ calcinum
+
+Commands:
+
+clear         clears the screen
+reset         resets history
+exit          exits the repl
+history       prints available history
+commands      prints this message
+
+[@1]> 1+1
+
+2
+
+[@2]> abs(-10)
+
+10
+
+[@3]> 3 * 3 - (@1 + 10)
+
+-3
+
+[@4]> abs(@3)
+
+3
+
+[@5]>
 ```
 
 # Library Usage

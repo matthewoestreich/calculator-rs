@@ -19,7 +19,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "calcinum"
-path = "src/bin/main.rs"
+path = "bin/main.rs"
 
 [dependencies]
 bigdecimal = "0.4.10"

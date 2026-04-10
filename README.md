@@ -256,7 +256,7 @@ use calcinum::{Calculator, Key};
 let mut c = Calculator::new();
 
 // Build infix expression
-c.press(Key::ParenthesisOpen);
+c.press(Key::ParenthesesOpen);
 c.press(Key::Two);
 c.press(Key::Add);
 c.expression("8)/2");

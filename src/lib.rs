@@ -89,8 +89,8 @@ pub enum Key {
     Multiply,
     Divide,
     Pow,
-    ParenthesisOpen,
-    ParenthesisClose,
+    ParenthesesOpen,
+    ParenthesesClose,
     Period,
 }
 
@@ -112,8 +112,8 @@ impl fmt::Display for Key {
             Key::Multiply => "*",
             Key::Divide => "/",
             Key::Pow => "^",
-            Key::ParenthesisOpen => "(",
-            Key::ParenthesisClose => ")",
+            Key::ParenthesesOpen => "(",
+            Key::ParenthesesClose => ")",
             Key::Period => ".",
         };
         write!(f, "{r}")
@@ -166,11 +166,11 @@ mod test {
         c.press(Key::Multiply);
         c.press(Key::Two);
         c.press(Key::Divide);
-        c.press(Key::ParenthesisOpen);
+        c.press(Key::ParenthesesOpen);
         c.press(Key::One);
         c.press(Key::Subtract);
         c.press(Key::Five);
-        c.press(Key::ParenthesisClose);
+        c.press(Key::ParenthesesClose);
 
         assert_eq!(
             c.infix(),

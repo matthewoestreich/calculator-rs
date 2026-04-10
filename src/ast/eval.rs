@@ -13,8 +13,12 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
         match token {
             Token::Number(n) => stack.push(n),
             Token::Function(ref f) => {
-                let n = eval_function(f, &mut stack)?;
-                stack.push(n);
+                let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                stack.push(match f {
+                    Function::Abs => x.abs(),
+                    Function::Floor => x.floor(),
+                    Function::Ceil => x.ceil(),
+                });
             }
             Token::Operator(ref o) => {
                 let n = eval_operator(o, &mut stack)?;
@@ -29,15 +33,6 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
         return Err(ParserError::InvalidExpression);
     }
     Ok(stack.pop().expect("just verified len"))
-}
-
-fn eval_function(f: &Function, stack: &mut Vec<Number>) -> Result<Number, ParserError> {
-    let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
-    Ok(match f {
-        Function::Abs => x.abs(),
-        Function::Floor => x.floor(),
-        Function::Ceil => x.ceil(),
-    })
 }
 
 fn eval_operator(o: &Operator, stack: &mut Vec<Number>) -> Result<Number, ParserError> {

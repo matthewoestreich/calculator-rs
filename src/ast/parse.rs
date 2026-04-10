@@ -1,4 +1,4 @@
-use super::{Associativity, OperationOrder, Operator, Token, error::ParserError};
+use super::{Associativity, OperationOrder, Token, error::ParserError};
 
 /// Uses shunting yard algorithm.
 /// Returns `Vec<Token>` in reverse polish notation.
@@ -13,10 +13,48 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
     for token in infix_tokens {
         match token {
             Token::Number(_) => output.push(token),
-            Token::Function(_) | Token::ParenthesesOpen => stack.push(token),
-            Token::ParenthesesClose => parse_closed_paren(&mut stack, &mut output)?,
-            Token::Operator(ref op) => {
-                parse_operator(op, &mut stack, &mut output)?;
+            Token::Function(_) => stack.push(token),
+            Token::ParenthesesOpen => stack.push(token),
+            Token::ParenthesesClose => {
+                let mut has_open_paren = false;
+
+                while let Some(t) = stack.pop() {
+                    if matches!(t, Token::ParenthesesOpen) {
+                        has_open_paren = true;
+                        break;
+                    }
+
+                    output.push(t);
+                }
+
+                if !has_open_paren {
+                    return Err(ParserError::MissingOpeningParentheses);
+                }
+
+                if matches!(stack.last(), Some(Token::Function(_))) {
+                    output.push(stack.pop().expect("just verified .last"));
+                }
+            }
+            Token::Operator(ref operator) => {
+                let precedence = operator.precedence();
+                let associativity = operator.associativity();
+
+                while let Some(top) = stack.last() {
+                    if matches!(top, Token::ParenthesesOpen) {
+                        break;
+                    }
+
+                    let top_precedence = top.precedence();
+                    if match associativity {
+                        Associativity::Left => precedence > top_precedence,
+                        Associativity::Right => precedence >= top_precedence,
+                    } {
+                        break;
+                    }
+
+                    output.push(stack.pop().expect("valid while condition"));
+                }
+
                 stack.push(token);
             }
         }
@@ -30,53 +68,4 @@ pub fn parse(infix_tokens: Vec<Token>) -> Result<Vec<Token>, ParserError> {
     }
 
     Ok(output)
-}
-
-fn parse_closed_paren(stack: &mut Vec<Token>, output: &mut Vec<Token>) -> Result<(), ParserError> {
-    let mut found_open_paren = false;
-
-    while let Some(t) = stack.pop() {
-        if matches!(t, Token::ParenthesesOpen) {
-            found_open_paren = true;
-            break;
-        }
-        output.push(t);
-    }
-
-    if !found_open_paren {
-        return Err(ParserError::MissingOpeningParentheses);
-    }
-
-    if matches!(stack.last(), Some(Token::Function(_))) {
-        output.push(stack.pop().expect("just verified .last"));
-    }
-
-    Ok(())
-}
-
-fn parse_operator(
-    op: &Operator,
-    stack: &mut Vec<Token>,
-    output: &mut Vec<Token>,
-) -> Result<(), ParserError> {
-    let precedence = op.precedence();
-    let associativity = op.associativity();
-
-    while let Some(top) = stack.last() {
-        if matches!(top, Token::ParenthesesOpen) {
-            break;
-        }
-
-        let top_precedence = top.precedence();
-        if match associativity {
-            Associativity::Left => precedence > top_precedence,
-            Associativity::Right => precedence >= top_precedence,
-        } {
-            break;
-        }
-
-        output.push(stack.pop().ok_or(ParserError::InvalidExpression)?);
-    }
-
-    Ok(())
 }

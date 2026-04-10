@@ -1,18 +1,18 @@
+mod ast;
 mod number;
-mod parser;
 
 pub use bigdecimal;
 pub use num_bigint;
 pub use number::{Number, NumberError, NumberOrder, ToNumber};
 
-use crate::parser::ParserError;
+use ast::error::ParserError;
 use std::{error, fmt};
 
 /// Evaluates infix expression.
 pub fn parse_expression(infix_expression: &str) -> Result<Number, CalculatorError> {
-    let tokens = parser::tokenize(infix_expression)?;
-    let rpn_tokens = parser::parse(tokens)?;
-    let result = parser::eval(rpn_tokens)?;
+    let tokens = ast::tokenize(infix_expression)?;
+    let rpn_tokens = ast::parse(tokens)?;
+    let result = ast::eval(rpn_tokens)?;
     Ok(result)
 }
 
@@ -55,9 +55,9 @@ impl Calculator {
     /// Calculates constructed infix string.
     /// We set the result to be the new infix, so you can use the result in further calculations.
     pub fn calculate(&mut self) -> Result<Number, CalculatorError> {
-        let tokens = parser::tokenize(&self.infix)?;
-        let rpn_tokens = parser::parse(tokens)?;
-        let result = parser::eval(rpn_tokens)?;
+        let tokens = ast::tokenize(&self.infix)?;
+        let rpn_tokens = ast::parse(tokens)?;
+        let result = ast::eval(rpn_tokens)?;
         self.infix = result.to_string();
         Ok(result)
     }

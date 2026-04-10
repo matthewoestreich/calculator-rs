@@ -1,4 +1,4 @@
-use super::{Associativity, OperationOrder, Token, error::ParserError};
+use super::{Associativity, Token, error::ParserError};
 
 /// Uses shunting yard algorithm.
 /// Returns `Vec<Token>` in reverse polish notation.

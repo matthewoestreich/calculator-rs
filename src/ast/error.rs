@@ -1,4 +1,4 @@
-use super::{Operator, Token};
+use super::{Binary, Token};
 use crate::NumberError;
 use bigdecimal::ParseBigDecimalError;
 use std::{error, fmt};
@@ -11,7 +11,7 @@ pub enum ParserError {
         name: String,
     },
     /// `Operator` argument is what you got instead
-    ExpectedUnary(Operator),
+    ExpectedUnary(Binary),
     /// `Token` argument is what you got instead
     ExpectedFunction(Token),
     /// `Token` argument is what you got instead

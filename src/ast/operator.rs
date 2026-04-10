@@ -1,11 +1,5 @@
 use super::Token;
-use std::{fmt, iter, str::Chars};
-
-/// Has the ability to be an operator.
-pub trait OperationOrder {
-    fn precedence(&self) -> i32;
-    fn associativity(&self) -> Associativity;
-}
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Associativity {
@@ -13,56 +7,40 @@ pub enum Associativity {
     Right,
 }
 
+// ===========================================================================================
+// ========================== Operator =======================================================
+// ===========================================================================================
+
 #[derive(Debug, Clone, Copy)]
 pub enum Operator {
-    Add,            // +
-    Subtract,       // -
-    Multiply,       // *
-    Divide,         // /
-    Exponentiation, // **
-    Remainder,      // %
-    And,            // &
-    Or,             // |
-    Xor,            // ^
-    ShiftLeft,      // <<
-    ShiftRight,     // >>
-    Negate,         // -
-    Not,            // !
-}
-
-impl OperationOrder for Operator {
-    fn precedence(&self) -> i32 {
-        match self {
-            Operator::Negate | Operator::Not => 8,
-            Operator::Exponentiation => 7,
-            Operator::Multiply | Operator::Divide | Operator::Remainder => 6,
-            Operator::Add | Operator::Subtract => 5,
-            Operator::ShiftLeft | Operator::ShiftRight => 4,
-            Operator::And => 3,
-            Operator::Xor => 2,
-            Operator::Or => 1,
-        }
-    }
-
-    fn associativity(&self) -> Associativity {
-        if matches!(self, Self::Exponentiation | Self::Negate | Self::Not) {
-            return Associativity::Right;
-        }
-        Associativity::Left
-    }
+    Binary(Binary),
+    Unary(Unary),
 }
 
 impl Operator {
-    pub fn is_unary(&self) -> bool {
-        matches!(self, Self::Negate | Self::Not)
+    pub fn precedence(&self) -> i32 {
+        match self {
+            Operator::Unary(_) => 8,
+            Operator::Binary(binary) => match binary {
+                Binary::Exponentiation => 7,
+                Binary::Multiply | Binary::Divide | Binary::Remainder => 6,
+                Binary::Add | Binary::Subtract => 5,
+                Binary::ShiftLeft | Binary::ShiftRight => 4,
+                Binary::And => 3,
+                Binary::Xor => 2,
+                Binary::Or => 1,
+            },
+        }
     }
 
-    /// Checks if an iter has two consecutive chars that qualify as an operator.
-    /// Example of two-character operators : `**`, `<<`, `>>`
-    pub(crate) fn has_two_chars(first_char: &char, iter: &mut iter::Peekable<Chars>) -> bool {
-        iter.peek().is_some_and(|sec_char| {
-            matches!((first_char, sec_char), ('*', '*') | ('<', '<') | ('>', '>'))
-        })
+    pub fn associativity(&self) -> Associativity {
+        match self {
+            Operator::Unary(_) => Associativity::Right,
+            Operator::Binary(binary) => match binary {
+                Binary::Exponentiation => Associativity::Right,
+                _ => Associativity::Left,
+            },
+        }
     }
 
     /// Determines if an ambiguous operator (such as `-`) is considered
@@ -79,19 +57,64 @@ impl Operator {
 impl fmt::Display for Operator {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Operator::Add => write!(f, "ADD"),
-            Operator::Subtract => write!(f, "SUB"),
-            Operator::Multiply => write!(f, "MUL"),
-            Operator::Divide => write!(f, "DIV"),
-            Operator::Exponentiation => write!(f, "EXP"),
-            Operator::Remainder => write!(f, "REM"),
-            Operator::And => write!(f, "AND"),
-            Operator::Or => write!(f, "OR"),
-            Operator::Xor => write!(f, "XOR"),
-            Operator::ShiftLeft => write!(f, "SHL"),
-            Operator::ShiftRight => write!(f, "SHR"),
-            Operator::Negate => write!(f, "NEG"),
-            Operator::Not => write!(f, "NOT"),
+            Operator::Binary(binary) => write!(f, "{binary}"),
+            Operator::Unary(unary) => write!(f, "{unary}"),
+        }
+    }
+}
+
+// ===========================================================================================
+// ========================== Unary Operators ================================================
+// ===========================================================================================
+
+#[derive(Debug, Clone, Copy)]
+pub enum Unary {
+    Negate, // -
+    Not,    // !
+}
+
+impl fmt::Display for Unary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Unary::Negate => write!(f, "NEG"),
+            Unary::Not => write!(f, "NOT"),
+        }
+    }
+}
+
+// ===========================================================================================
+// ========================== Binary Operators ===============================================
+// ===========================================================================================
+
+#[derive(Debug, Clone, Copy)]
+pub enum Binary {
+    Add,            // +
+    Subtract,       // -
+    Multiply,       // *
+    Divide,         // /
+    Exponentiation, // **
+    Remainder,      // %
+    And,            // &
+    Or,             // |
+    Xor,            // ^
+    ShiftLeft,      // <<
+    ShiftRight,     // >>
+}
+
+impl fmt::Display for Binary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Binary::Add => write!(f, "ADD"),
+            Binary::Subtract => write!(f, "SUB"),
+            Binary::Multiply => write!(f, "MUL"),
+            Binary::Divide => write!(f, "DIV"),
+            Binary::Exponentiation => write!(f, "EXP"),
+            Binary::Remainder => write!(f, "REM"),
+            Binary::And => write!(f, "AND"),
+            Binary::Or => write!(f, "OR"),
+            Binary::Xor => write!(f, "XOR"),
+            Binary::ShiftLeft => write!(f, "SHL"),
+            Binary::ShiftRight => write!(f, "SHR"),
         }
     }
 }

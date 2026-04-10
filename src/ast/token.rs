@@ -1,4 +1,4 @@
-use super::{Function, OperationOrder, Operator, error::ParserError};
+use super::{Function, Operator, error::ParserError};
 use crate::Number;
 use std::fmt;
 
@@ -12,13 +12,6 @@ pub enum Token {
 }
 
 impl Token {
-    pub fn is_unary(&self) -> bool {
-        if let Token::Operator(o) = self {
-            return o.is_unary();
-        }
-        false
-    }
-
     /// Determines `&Token` precedence. We use "C-style" operator precedence.
     pub fn precedence(&self) -> i32 {
         if let Token::Operator(o) = self {

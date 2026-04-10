@@ -1,4 +1,4 @@
-use super::{Function, Operator, Token, error::ParserError};
+use super::{Binary, Function, Operator, Token, Unary, error::ParserError};
 use crate::Number;
 
 /// Expects `rpn_tokens` in reverse polish notation
@@ -12,18 +12,41 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
     for token in rpn_tokens {
         match token {
             Token::Number(n) => stack.push(n),
-            Token::Function(ref f) => {
+            Token::Function(ref function) => {
                 let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
-                stack.push(match f {
+                stack.push(match function {
                     Function::Abs => x.abs(),
                     Function::Floor => x.floor(),
                     Function::Ceil => x.ceil(),
                 });
             }
-            Token::Operator(ref o) => {
-                let n = eval_operator(o, &mut stack)?;
-                stack.push(n);
-            }
+            Token::Operator(ref operator) => match operator {
+                Operator::Unary(unary) => {
+                    let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                    stack.push(match unary {
+                        Unary::Negate => -x,
+                        Unary::Not => !x,
+                    });
+                }
+                Operator::Binary(binary) => {
+                    // Order matters here! 'rhs' must be popped before 'lhs'!
+                    let rhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                    let lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
+                    stack.push(match binary {
+                        Binary::Add => lhs + rhs,
+                        Binary::Subtract => lhs - rhs,
+                        Binary::Multiply => lhs * rhs,
+                        Binary::Divide => lhs / rhs,
+                        Binary::Exponentiation => lhs.pow(rhs.to_i64_saturating())?,
+                        Binary::Remainder => lhs % rhs,
+                        Binary::And => lhs & rhs,
+                        Binary::Or => lhs | rhs,
+                        Binary::Xor => lhs ^ rhs,
+                        Binary::ShiftLeft => lhs << rhs,
+                        Binary::ShiftRight => lhs >> rhs,
+                    });
+                }
+            },
             _ => return Err(ParserError::UnexpectedToken(token)),
         }
     }
@@ -33,33 +56,4 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
         return Err(ParserError::InvalidExpression);
     }
     Ok(stack.pop().expect("just verified len"))
-}
-
-fn eval_operator(o: &Operator, stack: &mut Vec<Number>) -> Result<Number, ParserError> {
-    if o.is_unary() {
-        let x = stack.pop().ok_or(ParserError::InvalidExpression)?;
-        Ok(match o {
-            Operator::Negate => -x,
-            Operator::Not => !x,
-            _ => return Err(ParserError::ExpectedUnary(*o)),
-        })
-    } else {
-        // Order matters here! 'rhs' must be popped before 'lhs'!
-        let rhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
-        let lhs = stack.pop().ok_or(ParserError::InvalidExpression)?;
-        Ok(match o {
-            Operator::Add => lhs + rhs,
-            Operator::Subtract => lhs - rhs,
-            Operator::Multiply => lhs * rhs,
-            Operator::Divide => lhs / rhs,
-            Operator::Exponentiation => lhs.pow(rhs.to_i64_saturating())?,
-            Operator::Remainder => lhs % rhs,
-            Operator::And => lhs & rhs,
-            Operator::Or => lhs | rhs,
-            Operator::Xor => lhs ^ rhs,
-            Operator::ShiftLeft => lhs << rhs,
-            Operator::ShiftRight => lhs >> rhs,
-            _ => unreachable!("unary operators should have been handled already"),
-        })
-    }
 }

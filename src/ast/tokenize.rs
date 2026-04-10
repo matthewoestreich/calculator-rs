@@ -1,4 +1,4 @@
-use super::{Function, Operator, Token, error::ParserError};
+use super::{Binary, Function, Operator, Token, Unary, error::ParserError};
 use crate::Number;
 use std::{iter, str::Chars};
 
@@ -22,35 +22,53 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 let func = tokenize_function(&c, &mut iter)?;
                 tokens.push(Token::Function(func));
             }
-            '-' | '!' if Operator::is_unary_context(&tokens) => {
-                tokens.push(Token::Operator(match c {
-                    '-' => Operator::Negate,
-                    '!' => Operator::Not,
-                    _ => return Err(ParserError::UnexpectedChar(c)),
-                }));
-            }
-            '*' | '<' | '>' if Operator::has_two_chars(&c, &mut iter) => {
-                let sc = iter.next().expect("just validated next via peek");
-                tokens.push(Token::Operator(match sc {
-                    '*' => Operator::Exponentiation,
-                    '<' => Operator::ShiftLeft,
-                    '>' => Operator::ShiftRight,
-                    _ => return Err(ParserError::UnexpectedChar(c)),
-                }));
-            }
-            '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' => {
-                let op = tokenize_single_char_operator(&c)?;
-                tokens.push(Token::Operator(op));
-            }
             c if c.is_ascii_digit() || c == '.' => {
                 let number = tokenize_number(&c, &mut iter)?;
                 tokens.push(Token::Number(number));
+            }
+            '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' | '!' => {
+                // `if` First check for unary operators based upon tokens context.
+                // `else if` Next, we check for operators that have two characters.
+                // `else` Finally, we fall-thru to the reamining binary operators.
+                let t = Token::Operator(if Operator::is_unary_context(&tokens) {
+                    Operator::Unary(match c {
+                        '-' => Unary::Negate,
+                        '!' => Unary::Not,
+                        _ => return Err(ParserError::UnexpectedChar(c)),
+                    })
+                } else if iter.peek().is_some_and(op_has_two_chars) {
+                    let sc = iter.next().expect("just validated next via peek");
+                    Operator::Binary(match sc {
+                        '*' => Binary::Exponentiation,
+                        '<' => Binary::ShiftLeft,
+                        '>' => Binary::ShiftRight,
+                        _ => return Err(ParserError::UnexpectedChar(c)),
+                    })
+                } else {
+                    Operator::Binary(match c {
+                        '+' => Binary::Add,
+                        '-' => Binary::Subtract,
+                        '*' => Binary::Multiply,
+                        '/' => Binary::Divide,
+                        '%' => Binary::Remainder,
+                        '&' => Binary::And,
+                        '|' => Binary::Or,
+                        '^' => Binary::Xor,
+                        _ => return Err(ParserError::UnexpectedChar(c)),
+                    })
+                });
+                tokens.push(t);
             }
             _ => return Err(ParserError::InvalidExpression),
         }
     }
 
     Ok(tokens)
+}
+
+/// Verify second char of suspected two-character-operator.
+fn op_has_two_chars(second_char: &char) -> bool {
+    matches!(second_char, '*' | '<' | '>')
 }
 
 fn tokenize_function(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Function, ParserError> {
@@ -64,20 +82,6 @@ fn tokenize_function(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Funct
     }
 
     fn_name_str.parse::<Function>()
-}
-
-fn tokenize_single_char_operator(c: &char) -> Result<Operator, ParserError> {
-    Ok(match c {
-        '+' => Operator::Add,
-        '-' => Operator::Subtract,
-        '*' => Operator::Multiply,
-        '/' => Operator::Divide,
-        '%' => Operator::Remainder,
-        '&' => Operator::And,
-        '|' => Operator::Or,
-        '^' => Operator::Xor,
-        _ => return Err(ParserError::UnexpectedChar(*c)),
-    })
 }
 
 fn tokenize_number(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Number, ParserError> {

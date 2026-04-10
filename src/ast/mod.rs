@@ -9,7 +9,7 @@ pub mod error;
 
 pub use eval::eval;
 pub use function::Function;
-pub use operator::{Associativity, OperationOrder, Operator};
+pub use operator::{Associativity, Binary, Operator, Unary};
 pub use parse::parse;
 pub use token::Token;
 pub use tokenize::tokenize;

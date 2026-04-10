@@ -1,6 +1,5 @@
-use std::{iter, str::Chars};
-
 use calcinum::parse_expression;
+use std::{iter, str::Chars};
 
 #[derive(Default, Debug)]
 pub struct Context {

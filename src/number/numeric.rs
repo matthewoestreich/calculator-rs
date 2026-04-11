@@ -53,12 +53,11 @@ impl Number {
         }
     }
 
-    pub fn sin(&mut self) -> Result<(), NumberError> {
-        *self = match self {
+    pub fn sin(&self) -> Result<Self, NumberError> {
+        Ok(match self {
             Number::Int(i) => Self::sin_str(&i.to_string())?,
             Number::Decimal(d) => Self::sin_str(&d.to_string())?,
-        };
-        Ok(())
+        })
     }
 
     fn sin_str(s: &str) -> Result<Number, NumberError> {

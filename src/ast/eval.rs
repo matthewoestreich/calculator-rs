@@ -18,6 +18,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     Function::Abs => x.abs(),
                     Function::Floor => x.floor(),
                     Function::Ceil => x.ceil(),
+                    Function::Sin => x.sin()?,
                 });
             }
             Token::Operator(ref operator) => match operator {

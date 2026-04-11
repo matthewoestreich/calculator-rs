@@ -45,11 +45,12 @@ To call a function, type the function name, followed by an open parentheses, the
 
 For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 
-| Function | Definition                                                |
-| -------- | --------------------------------------------------------- |
-| `abs`    | Non-negative distance of a number from zero.              |
-| `floor`  | Greatest integer less than or equal to a given number.    |
-| `ceil`   | Smallest integer greater than or equal to a given number. |
+| Function | Definition                                                                         |
+| -------- | ---------------------------------------------------------------------------------- |
+| `abs`    | Non-negative distance of a number from zero.                                       |
+| `floor`  | Greatest integer less than or equal to a given number.                             |
+| `ceil`   | Smallest integer greater than or equal to a given number.                          |
+| `sin`    | Sine function. Computes the unit-circle y-coordinate for a given angle in radians. |
 
 # CLI Usage
 

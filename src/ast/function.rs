@@ -6,6 +6,7 @@ pub enum Function {
     Abs,
     Floor,
     Ceil,
+    Sin,
 }
 
 impl FromStr for Function {
@@ -16,6 +17,7 @@ impl FromStr for Function {
             "abs" => Self::Abs,
             "floor" => Self::Floor,
             "ceil" => Self::Ceil,
+            "sin" => Self::Sin,
             _ => {
                 return Err(ParserError::UnrecognizedFunction {
                     name: s.to_string(),
@@ -32,6 +34,7 @@ impl fmt::Display for Function {
             Function::Abs => write!(f, "abs"),
             Function::Floor => write!(f, "floor"),
             Function::Ceil => write!(f, "ceil"),
+            Function::Sin => write!(f, "sin"),
         }
     }
 }

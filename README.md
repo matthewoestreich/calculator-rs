@@ -88,6 +88,11 @@ Shell mode comes with a few extra commands, just type `commands` to view them.
 
 **Shell mode examples:**
 
+<img width="552" height="803" alt="Screenshot 2026-04-10 at 7 38 53 PM" src="https://github.com/user-attachments/assets/5144295a-400f-432d-80cf-ccf8206c7fff" />
+
+<details>
+  <summary>Click to view raw text of screenshot above</summary>
+
 ```
 $ calcinum
 
@@ -108,9 +113,7 @@ commands      prints this message
 [@4]> abs(@3)
 3
 [@5]> @10+1
-
 Line '10' does not exist.
-
 [@6]> history
 @1
   expression = '1+1'
@@ -131,6 +134,8 @@ Line '10' does not exist.
 --- HISTORY RESET ---
 [@1]>
 ```
+
+</details>
 
 # Library Usage
 

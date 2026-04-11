@@ -22,6 +22,7 @@ name = "calcinum"
 path = "bin/main.rs"
 
 [dependencies]
+astro-float = "0.9.5"
 bigdecimal = "0.4.10"
 num-bigint = "0.4.6"
 num-traits = "0.2.19"

@@ -1,5 +1,8 @@
-use super::{Number, NumberError};
+use crate::{Number, NumberError, number::ASTRO_CONSTS};
+use astro_float::BigFloat;
+use bigdecimal::BigDecimal;
 use num_traits::Signed;
+use std::str::FromStr;
 
 impl Number {
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
@@ -49,5 +52,20 @@ impl Number {
                 Number::Decimal(bd)
             }
         }
+    }
+
+    pub fn sin(&mut self) {
+        *self = match self {
+            Number::Int(i) => Self::sin_str(&i.to_string()),
+            Number::Decimal(d) => Self::sin_str(&d.to_string()),
+        }
+    }
+
+    fn sin_str(s: &str) -> Number {
+        ASTRO_CONSTS.with(|cc| {
+            let bf = s.parse::<BigFloat>().expect("bigfloat");
+            let r = bf.sin(53, astro_float::RoundingMode::None, &mut cc.borrow_mut());
+            Number::Decimal(BigDecimal::from_str(&r.to_string()).expect("bigdecimal"))
+        })
     }
 }

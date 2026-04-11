@@ -1,4 +1,4 @@
-use super::{Number, error::NumberError};
+use crate::{Number, NumberError};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use num_traits::{Signed, ToPrimitive};

@@ -1,4 +1,4 @@
-use super::Number;
+use crate::Number;
 
 impl PartialEq for Number {
     fn eq(&self, other: &Self) -> bool {

@@ -8,15 +8,19 @@ mod comparison;
 mod conversion;
 mod numeric;
 
+use astro_float::Consts;
 use bigdecimal::BigDecimal;
-use error::NumberError;
 use num_bigint::BigInt;
-use std::{cmp::Ordering, fmt};
+use std::{cell::RefCell, cmp::Ordering, fmt};
 
 #[derive(Clone)]
 pub enum Number {
     Int(BigInt),
     Decimal(BigDecimal),
+}
+
+thread_local! {
+    static ASTRO_CONSTS: RefCell<Consts> = RefCell::new(Consts::new().expect("astro-float consts"));
 }
 
 impl Number {

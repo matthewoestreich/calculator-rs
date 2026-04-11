@@ -1,4 +1,4 @@
-use super::Number;
+use crate::Number;
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use std::ops::{

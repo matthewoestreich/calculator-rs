@@ -1,4 +1,4 @@
-use super::Number;
+use crate::Number;
 use num_bigint::ToBigInt;
 use std::ops::{
     BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Not, Shl, ShlAssign, Shr,

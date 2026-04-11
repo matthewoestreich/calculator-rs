@@ -236,3 +236,174 @@ impl Neg for &Number {
         }
     }
 }
+
+// ===========================================================================================
+// ========================== Tests ==========================================================
+// ===========================================================================================
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use rstest::*;
+    use std::str::FromStr as _;
+
+    #[rstest]
+    #[case::add1("1", "1", "2")]
+    #[case::add2("1.1", "2.2", "3.3")]
+    #[case::add3("1.1", "2", "3.1")]
+    #[case::add4("2", "1.1", "3.1")]
+    fn add(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x + y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::add_assign1("1", "1", "2")]
+    #[case::add_assign2("1.1", "2.2", "3.3")]
+    #[case::add_assign3("1.1", "2", "3.1")]
+    #[case::add_assign4("2", "1.1", "3.1")]
+    fn add_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x += y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::sub1("1", "1", "0")]
+    #[case::sub2("1.1", "2.2", "-1.1")]
+    #[case::sub3("2", "1.1", "0.9")]
+    #[case::sub4("100", "47.4567", "52.5433")]
+    #[case::sub5("5.5", "2.2", "3.3")]
+    fn sub(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x - y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::sub_assign1("1", "1", "0")]
+    #[case::sub_assign2("1.1", "2.2", "-1.1")]
+    #[case::sub_assign3("2", "1.1", "0.9")]
+    #[case::sub_assign4("100", "47.4567", "52.5433")]
+    #[case::sub_assign5("5.5", "2.2", "3.3")]
+    fn sub_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x -= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::mul1("1", "1", "1")]
+    #[case::mul2("1.1", "2.2", "2.42")]
+    #[case::mul3("2", "1.1", "2.2")]
+    #[case::mul4("47.4567", "100", "4745.67")]
+    #[case::mul5("55", "22", "1210")]
+    #[case::mul6("5.7", "2", "11.4")]
+    fn mul(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x * y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::mul_assign1("1", "1", "1")]
+    #[case::mul_assign2("1.1", "2.2", "2.42")]
+    #[case::mul_assign3("2", "1.1", "2.2")]
+    #[case::mul_assign4("47.4567", "100", "4745.67")]
+    #[case::mul_assign5("55", "22", "1210")]
+    #[case::mul_assign6("5.7", "2", "11.4")]
+    fn mul_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x *= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::div1("1", "1", "1")]
+    #[case::div2("1.1", "2.2", "0.5")]
+    #[case::div3("2", "1.1", "1.81818181818")]
+    #[case::div4("100", "47", "2.12765957447")]
+    #[case::div5("55", "5", "11")]
+    #[case::div6("5.7", "2", "2.85")]
+    fn div(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let mut r = x / y;
+        r.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::div_assign1("1", "1", "1")]
+    #[case::div_assign2("1.1", "2.2", "0.5")]
+    #[case::div_assign3("2", "1.1", "1.81818181818")]
+    #[case::div_assign4("100", "47", "2.12765957447")]
+    #[case::div_assign5("55", "5", "11")]
+    #[case::div_assign6("5.7", "2", "2.85")]
+    fn div_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x /= y;
+        x.set_scale_round(11, bigdecimal::RoundingMode::HalfUp);
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::rem1("1", "1", "0")]
+    #[case::rem2("1.1", "2.2", "1.1")]
+    #[case::rem3("2", "1.1", "0.9")]
+    #[case::rem4("100", "47", "6")]
+    #[case::rem5("55", "5", "0")]
+    #[case::rem6("5.7", "2", "1.7")]
+    #[case::rem7("5.6", "3.2", "2.4")]
+    #[case::rem8("5.6", "2", "1.6")]
+    fn rem(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = x % y;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+
+    #[rstest]
+    #[case::rem_assign1("1", "1", "0")]
+    #[case::rem_assign2("1.1", "2.2", "1.1")]
+    #[case::rem_assign3("2", "1.1", "0.9")]
+    #[case::rem_assign4("100", "47", "6")]
+    #[case::rem_assign5("55", "5", "0")]
+    #[case::rem_assign6("5.7", "2", "1.7")]
+    #[case::rem_assign7("5.6", "3.2", "2.4")]
+    #[case::rem_assign8("5.6", "2", "1.6")]
+    fn rem_assign(#[case] lhs: &str, #[case] rhs: &str, #[case] expect: &str) {
+        let mut x = Number::from_str(lhs).unwrap();
+        let y = Number::from_str(rhs).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        x %= y;
+        assert_eq!(x, e, "expected {e:?} got {x:?}");
+    }
+
+    #[rstest]
+    #[case::neg1("55", "-55")]
+    #[case::neg2("55.55", "-55.55")]
+    fn neg(#[case] number: &str, #[case] expect: &str) {
+        let n = Number::from_str(number).unwrap();
+        let e = Number::from_str(expect).unwrap();
+        let r = -n;
+        assert_eq!(r, e, "expected {e:?} got {r:?}");
+    }
+}

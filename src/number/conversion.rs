@@ -284,3 +284,62 @@ impl FromStr for Number {
         })
     }
 }
+
+// ===========================================================================================
+// ========================== Tests ==========================================================
+// ===========================================================================================
+
+#[cfg(test)]
+mod test {
+    use crate::{number::conversion::ToNumber, *};
+    use rstest::*;
+    use std::str::FromStr as _;
+
+    #[test]
+    fn from_str() {
+        let a = Number::from_str("1.1").unwrap();
+        let ea = 1.1.to_number();
+        assert_eq!(a, ea, "expected {ea:?} got {a:?}");
+
+        let b = Number::from_str("1").unwrap();
+        let eb = 1.to_number();
+        assert_eq!(b, eb, "expected {eb:?} got {b:?}");
+    }
+
+    #[test]
+    fn from_f64() {
+        let a = Number::from_f64(1.1).unwrap();
+        assert_eq!(a.order(), NumberOrder::Decimal);
+    }
+
+    #[rstest]
+    #[case::binary_str1(
+        "17958432089245743489.3597843208120587934",
+        "1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
+    )]
+    #[case::binary_str_bigdecimal_neg(
+        "-17958432089245743489.3597843208120587934",
+        "-1111100100111001001010101101011001011010011101111111100110000001.11000111101110000110110101010111101001100101000101011010011110"
+    )]
+    #[case::binary_str2(
+        "17958432089245743489",
+        "1111100100111001001010101101011001011010011101111111100110000001"
+    )]
+    #[case::binary_str_bigint_neg(
+        "-17958432089245743489",
+        "-1111100100111001001010101101011001011010011101111111100110000001"
+    )]
+    fn binary_str(#[case] number: &str, #[case] expect: &str) {
+        let n = Number::from_str(number).unwrap();
+        let fr = format!("{n:b}");
+        assert_eq!(
+            expect, fr,
+            "[format!(\"{n:b}\")] expected '{expect}' got '{fr}'"
+        );
+        let br = n.to_binary_str();
+        assert_eq!(
+            expect, br,
+            "[n.to_binary_str()] expected '{expect}' got '{br}'"
+        );
+    }
+}

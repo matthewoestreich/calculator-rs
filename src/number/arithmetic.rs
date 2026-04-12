@@ -1,9 +1,74 @@
-use crate::Number;
+use crate::{Number, NumberError};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
+
+impl Number {
+    /// Fallible API for div_assign.
+    pub fn try_div_assign(&mut self, rhs: &Number) -> Result<(), NumberError> {
+        if rhs.is_zero() {
+            return Err(NumberError::DivisionByZero);
+        }
+
+        *self = match (&self, rhs) {
+            // Delegate to `impl Div<&Number> for &Number` since we would call the same code regardless
+            (Number::Decimal(_), Number::Decimal(_)) | (Number::Decimal(_), Number::Int(_)) => {
+                &*self / rhs
+            }
+            (Number::Int(_), Number::Decimal(_)) => {
+                self.promote(); // Both sides must be Number::Decimal
+                &*self / rhs
+            }
+            (Number::Int(x), Number::Int(y)) => {
+                if x % y != BigInt::ZERO {
+                    // There is a remainder, need to convert both sides to `Number::Decimal`
+                    // so we perform decimal division, not integer division.
+                    self.promote();
+                    &*self / rhs
+                } else {
+                    // Integer division would not produce a remainder, ok to use integer division.
+                    Number::Int(x / y)
+                }
+            }
+        };
+
+        Ok(())
+    }
+
+    /// Fallible API for div.
+    pub fn try_div(&self, rhs: &Number) -> Result<Number, NumberError> {
+        if rhs.is_zero() {
+            return Err(NumberError::DivisionByZero);
+        }
+
+        let result = match (self, rhs) {
+            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x / y),
+            (Number::Int(x), Number::Int(y)) => {
+                if x % y != BigInt::ZERO {
+                    // There is a remainder, need to convert both sides to
+                    // `Number::Decimal` so we perform decimal division, not integer division.
+                    let l = BigDecimal::from(x.clone());
+                    let r = BigDecimal::from(y.clone());
+                    Number::Decimal(l / r)
+                } else {
+                    Number::Int(x / y)
+                }
+            }
+            (Number::Int(x), Number::Decimal(y)) => {
+                let x = BigDecimal::from(x.clone());
+                Number::Decimal(x / y)
+            }
+            (Number::Decimal(x), Number::Int(y)) => {
+                let y = BigDecimal::from(y.clone());
+                Number::Decimal(x / y)
+            }
+        };
+
+        Ok(result)
+    }
+}
 
 // ===========================================================================================
 // ========================== AddAssign/Add ==================================================
@@ -83,27 +148,7 @@ impl DivAssign<Number> for Number {
 
 impl DivAssign<&Number> for Number {
     fn div_assign(&mut self, rhs: &Number) {
-        *self = match (&self, rhs) {
-            // Delegate to `impl Div<&Number> for &Number` since we would call the same code regardless
-            (Number::Decimal(_), Number::Decimal(_)) | (Number::Decimal(_), Number::Int(_)) => {
-                &*self / rhs
-            }
-            (Number::Int(_), Number::Decimal(_)) => {
-                self.promote(); // Both sides must be Number::Decimal
-                &*self / rhs
-            }
-            (Number::Int(x), Number::Int(y)) => {
-                if x % y != BigInt::ZERO {
-                    // There is a remainder, need to convert both sides to `Number::Decimal`
-                    // so we perform decimal division, not integer division.
-                    self.promote();
-                    &*self / rhs
-                } else {
-                    // Integer division would not produce a remainder, ok to use integer division.
-                    Number::Int(x / y)
-                }
-            }
-        }
+        self.try_div_assign(rhs).expect("div_assign");
     }
 }
 
@@ -120,28 +165,7 @@ impl Div<&Number> for &Number {
     type Output = Number;
 
     fn div(self, rhs: &Number) -> Self::Output {
-        match (self, rhs) {
-            (Number::Decimal(x), Number::Decimal(y)) => Number::Decimal(x / y),
-            (Number::Int(x), Number::Int(y)) => {
-                if x % y != BigInt::ZERO {
-                    // There is a remainder, need to convert both sides to
-                    // `Number::Decimal` so we perform decimal division, not integer division.
-                    let l = BigDecimal::from(x.clone());
-                    let r = BigDecimal::from(y.clone());
-                    Number::Decimal(l / r)
-                } else {
-                    Number::Int(x / y)
-                }
-            }
-            (Number::Int(x), Number::Decimal(y)) => {
-                let x = BigDecimal::from(x.clone());
-                Number::Decimal(x / y)
-            }
-            (Number::Decimal(x), Number::Int(y)) => {
-                let y = BigDecimal::from(y.clone());
-                Number::Decimal(x / y)
-            }
-        }
+        self.try_div(rhs).expect("div")
     }
 }
 

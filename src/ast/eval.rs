@@ -45,7 +45,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                         Binary::Add => lhs + rhs,
                         Binary::Subtract => lhs - rhs,
                         Binary::Multiply => lhs * rhs,
-                        Binary::Divide => lhs / rhs,
+                        Binary::Divide => lhs.try_div(&rhs)?,
                         Binary::Exponentiation => lhs.pow(rhs.to_i64_saturating())?,
                         Binary::Remainder => lhs % rhs,
                         Binary::And => lhs & rhs,

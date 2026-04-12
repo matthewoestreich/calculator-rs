@@ -7,6 +7,7 @@ pub enum NumberError {
     Parsing { value: String },
     InvalidExponent { message: String },
     ParseFloat(AstroError),
+    DivisionByZero,
 }
 
 impl fmt::Display for NumberError {
@@ -15,6 +16,7 @@ impl fmt::Display for NumberError {
             NumberError::ParseFloat(e) => write!(f, "{e}"),
             NumberError::Parsing { value } => write!(f, "Error parsing value : {value}"),
             NumberError::InvalidExponent { message } => write!(f, "{message}"),
+            NumberError::DivisionByZero => write!(f, "attempt to divide by zero"),
         }
     }
 }

@@ -9,6 +9,9 @@ impl Number {
         ASTRO_CONSTS.with(|cc| {
             let mut ctx = cc.borrow_mut();
             let pi_bf = ctx.pi(precision, AstroRoundingMode::None);
+            if pi_bf.is_nan() || pi_bf.is_inf() {
+                return Err(NumberError::IsNaNOrInfinity);
+            }
             let pi_bd = pi_bf.to_string().parse::<BigDecimal>()?;
             Ok(Number::Decimal(pi_bd))
         })
@@ -114,6 +117,18 @@ impl Number {
 mod test {
     use super::*;
     use rstest::*;
+
+    #[test]
+    fn foofoo() {
+        //let p = Number::pi(u64::MAX as usize).unwrap();
+        //println!("{p}");
+
+        ASTRO_CONSTS.with(|cc| {
+            let mut ctx = cc.borrow_mut();
+            let p = ctx.pi(u64::MAX as usize, astro_float::RoundingMode::None);
+            println!("{p}");
+        })
+    }
 
     #[rstest]
     #[case::abs1("10", "10")]

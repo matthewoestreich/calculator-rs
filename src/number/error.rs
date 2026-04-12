@@ -8,12 +8,16 @@ pub enum NumberError {
     InvalidExponent { message: String },
     ParseFloat(AstroError),
     DivisionByZero,
+    IsNaNOrInfinity,
 }
 
 impl fmt::Display for NumberError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             NumberError::ParseFloat(e) => write!(f, "{e}"),
+            NumberError::IsNaNOrInfinity => {
+                write!(f, "cannot represent NaN or Infinity as a Number")
+            }
             NumberError::Parsing { value } => write!(f, "Error parsing value : {value}"),
             NumberError::InvalidExponent { message } => write!(f, "{message}"),
             NumberError::DivisionByZero => write!(f, "attempt to divide by zero"),

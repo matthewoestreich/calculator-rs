@@ -25,6 +25,8 @@ thread_local! {
 }
 
 impl Number {
+    pub const ZERO: Self = Self::Int(BigInt::ZERO);
+
     /// Sets the scale only on Number::Decimal
     pub fn set_scale(&mut self, scale: i64) {
         if let Self::Decimal(n) = self {

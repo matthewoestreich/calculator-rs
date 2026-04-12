@@ -1,11 +1,22 @@
 use crate::Number;
+use bigdecimal::BigDecimal;
 use std::fmt;
+
+/// Converts scientific notation to standard notation.
+fn bd_fmt_standard(bd: &BigDecimal) -> String {
+    if bd.is_integer() {
+        format!("{bd:.0}")
+    } else {
+        let (_, scale) = bd.as_bigint_and_scale();
+        format!("{bd:.*}", (scale as usize).max(0))
+    }
+}
 
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Number::Int(big_int) => write!(f, "{big_int}"),
-            Number::Decimal(big_decimal) => write!(f, "{big_decimal}"),
+            Number::Int(i) => write!(f, "{i}"),
+            Number::Decimal(d) => write!(f, "{}", bd_fmt_standard(d)),
         }
     }
 }
@@ -14,7 +25,7 @@ impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int(i) => write!(f, "Number::Int({i})"),
-            Self::Decimal(d) => write!(f, "Number::Decimal({d})"),
+            Self::Decimal(d) => write!(f, "Number::Decimal({})", bd_fmt_standard(d)),
         }
     }
 }

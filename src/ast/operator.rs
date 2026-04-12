@@ -13,8 +13,8 @@ pub enum Associativity {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Operator {
-    Binary(Binary),
-    Unary(Unary),
+    Binary(Binary), // Binary arity.
+    Unary(Unary),   // Unary arity.
 }
 
 impl Operator {

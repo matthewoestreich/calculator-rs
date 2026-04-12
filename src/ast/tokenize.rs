@@ -36,9 +36,9 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                 tokens.push(Token::Number(number));
             }
             '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' | '!' => {
-                // `if` First check for unary operators based upon tokens context.
-                // `else if` Next, we check for operators that have two characters.
-                // `else` Finally, we fall-thru to the reamining binary operators.
+                // (if)      : First check for unary operators based upon tokens context.
+                // (else if) : Next, we check for operators that have two characters.
+                // (else)    : Finally, we fall-thru to the reamining binary operators.
                 let t = Token::Operator(if Operator::is_unary_context(&tokens) {
                     Operator::Unary(match c {
                         '-' => Unary::Negate,

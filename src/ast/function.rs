@@ -1,4 +1,4 @@
-use super::error::ParserError;
+use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone)]

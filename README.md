@@ -37,7 +37,7 @@ Operators with order of operations.
 | `^`      | Bitwise XOR    | 2           | Binary | Left          |
 | `\|`     | Bitwise OR     | 1 (lowest)  | Binary | Left          |
 
-# Mathematical Functions
+# Functions
 
 You can provide functions within an infix expression.
 
@@ -51,6 +51,15 @@ For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 | `floor`  | Greatest integer less than or equal to a given number.                             |
 | `ceil`   | Smallest integer greater than or equal to a given number.                          |
 | `sin`    | Sine function. Computes the unit-circle y-coordinate for a given angle in radians. |
+| `tan`    | Tangent function. Computes the unit-circle y/x ratio for a given angle in radians. |
+
+# Constants
+
+You can use constants within expressions. We simply replace the constant with its value.
+
+| Constant | Definition                                                  | Value                   | Library Usage                                                     |
+| -------- | ----------------------------------------------------------- | ----------------------- | ----------------------------------------------------------------- |
+| `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` | `let precision: usize = 64;`<br>`Number::pi(precision).unwrap();` |
 
 # CLI Usage
 

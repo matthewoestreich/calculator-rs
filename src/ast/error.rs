@@ -1,5 +1,5 @@
-use super::{Binary, Token};
 use crate::NumberError;
+use crate::ast::{Binary, Token};
 use bigdecimal::ParseBigDecimalError;
 use std::{error, fmt};
 
@@ -8,6 +8,13 @@ pub enum ParserError {
     EmptyExpression,
     InvalidExpression,
     UnrecognizedFunction {
+        name: String,
+    },
+    UnrecognizedConstant {
+        name: String,
+    },
+    /// The name of a function or const, etc..
+    UnrecognizedIdentifier {
         name: String,
     },
     /// `Operator` argument is what you got instead
@@ -41,6 +48,12 @@ impl fmt::Display for ParserError {
             ParserError::ExpectedOperator(got) => write!(f, "expected operator, got '{got}'"),
             ParserError::UnrecognizedFunction { name } => {
                 write!(f, "function with name '{name}' is not recognized")
+            }
+            ParserError::UnrecognizedConstant { name } => {
+                write!(f, "constant with name '{name}' is not recognized")
+            }
+            ParserError::UnrecognizedIdentifier { name } => {
+                write!(f, "identifier with name '{name}' is not recognized")
             }
             ParserError::InvalidNumber(n_str) => write!(f, "invalid number : '{n_str}'"),
             ParserError::BigDecimalErr(e) => write!(f, "error parsing BigDecimal : {e}"),

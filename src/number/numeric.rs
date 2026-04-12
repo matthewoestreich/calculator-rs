@@ -4,6 +4,16 @@ use bigdecimal::{BigDecimal, RoundingMode as BigDecimalRoundingMode};
 use num_traits::Signed;
 
 impl Number {
+    /// This method returns an error if the result of pi is NaN or Inf.
+    pub fn pi(precision: usize) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let mut ctx = cc.borrow_mut();
+            let pi_bf = ctx.pi(precision, AstroRoundingMode::None);
+            let pi_bd = pi_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(pi_bd))
+        })
+    }
+
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
         match self {
             Number::Decimal(d) => Ok(Number::Decimal(d.powi(exponent))),

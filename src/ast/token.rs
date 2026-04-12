@@ -1,5 +1,7 @@
-use super::{Function, Operator, error::ParserError};
-use crate::Number;
+use crate::{
+    Number,
+    ast::{Constant, Function, Operator, error::ParserError},
+};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -7,6 +9,7 @@ pub enum Token {
     Number(Number),
     Operator(Operator),
     Function(Function),
+    Constant(Constant),
     ParenthesesOpen,
     ParenthesesClose,
 }
@@ -27,6 +30,7 @@ impl fmt::Display for Token {
             Token::Number(number) => write!(f, "{number}"),
             Token::Function(func) => write!(f, "{func}"),
             Token::Operator(op_kind) => write!(f, "{op_kind}"),
+            Token::Constant(constant) => write!(f, "{constant}"),
             Token::ParenthesesOpen => write!(f, "("),
             Token::ParenthesesClose => write!(f, ")"),
         }

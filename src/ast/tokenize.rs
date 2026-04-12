@@ -1,5 +1,7 @@
-use super::{Binary, Function, Operator, Token, Unary, error::ParserError};
-use crate::Number;
+use crate::{
+    Number,
+    ast::{Binary, Constant, Function, Operator, Token, Unary, error::ParserError},
+};
 use std::{iter, str::Chars};
 
 pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
@@ -19,8 +21,15 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
             '(' => tokens.push(Token::ParenthesesOpen),
             ')' => tokens.push(Token::ParenthesesClose),
             c if c.is_ascii_alphabetic() => {
-                let func = tokenize_function(&c, &mut iter)?;
-                tokens.push(Token::Function(func));
+                let n = get_func_or_const_name(&c, &mut iter);
+                let t = n
+                    .parse::<Function>()
+                    .map(Token::Function)
+                    .or_else(|_| n.parse::<Constant>().map(Token::Constant))
+                    .map_err(|_| ParserError::UnrecognizedIdentifier {
+                        name: n.to_string(),
+                    })?;
+                tokens.push(t);
             }
             c if c.is_ascii_digit() || c == '.' => {
                 let number = tokenize_number(&c, &mut iter)?;
@@ -71,7 +80,9 @@ fn op_has_two_chars(second_char: &char) -> bool {
     matches!(second_char, '*' | '<' | '>')
 }
 
-fn tokenize_function(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Function, ParserError> {
+/// Could be a function (like `sin`, `abs`, etc..),
+/// or a constant (like `pi`) we don't know which yet.
+fn get_func_or_const_name(c: &char, iter: &mut iter::Peekable<Chars>) -> String {
     let mut fn_name_str = String::from(*c);
 
     while let Some(&p) = iter.peek()
@@ -81,7 +92,7 @@ fn tokenize_function(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Funct
         iter.next();
     }
 
-    fn_name_str.parse::<Function>()
+    fn_name_str
 }
 
 fn tokenize_number(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Number, ParserError> {
@@ -97,4 +108,35 @@ fn tokenize_number(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Number,
     num_str
         .parse::<Number>()
         .map_err(|_| ParserError::InvalidNumber(num_str))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::ast::test::tokens_to_str;
+    use rstest::*;
+
+    #[rstest]
+    #[case::tokenization1("2 + abs((2+2)-10)", "2 ADD abs ( ( 2 ADD 2 ) SUB 10 )")]
+    #[case::tokenization2(
+        "abs( 10 - abs( ( 2 + 2 ) - 10 ) )",
+        "abs ( 10 SUB abs ( ( 2 ADD 2 ) SUB 10 ) )"
+    )]
+    #[case::tokenization3(
+        "-abs( 10 - abs( -( 2 + 2 ) - 10 ) )",
+        "NEG abs ( 10 SUB abs ( NEG ( 2 ADD 2 ) SUB 10 ) )"
+    )]
+    #[case::tokenization4("pi", "pi")]
+    // Uses the `Display` impls for `expect_tokens`.
+    fn tokenization(#[case] raw_infix: &str, #[case] expect_tokens: &str) {
+        let tokens = match tokenize(raw_infix) {
+            Ok(t) => t,
+            Err(e) => panic!("TOKENIZATION ERROR = {e:?}"),
+        };
+        let tokens_str = tokens_to_str(&tokens);
+        assert_eq!(
+            tokens_str, expect_tokens,
+            "expected '{expect_tokens}' got '{tokens_str}'"
+        );
+    }
 }

@@ -21,18 +21,18 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
             '(' => tokens.push(Token::ParenthesesOpen),
             ')' => tokens.push(Token::ParenthesesClose),
             c if c.is_ascii_alphabetic() => {
-                let n = get_func_or_const_name(&c, &mut iter);
-                let t = n
+                let i = read_identifier(&c, &mut iter);
+                let t = i
                     .parse::<Function>()
                     .map(Token::Function)
-                    .or_else(|_| n.parse::<Constant>().map(Token::Constant))
+                    .or_else(|_| i.parse::<Constant>().map(Token::Constant))
                     .map_err(|_| ParserError::UnrecognizedIdentifier {
-                        name: n.to_string(),
+                        name: i.to_string(),
                     })?;
                 tokens.push(t);
             }
             c if c.is_ascii_digit() || c == '.' => {
-                let number = tokenize_number(&c, &mut iter)?;
+                let number = read_and_tokenize_number(&c, &mut iter)?;
                 tokens.push(Token::Number(number));
             }
             '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '<' | '>' | '!' => {
@@ -45,9 +45,9 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
                         '!' => Unary::Not,
                         _ => return Err(ParserError::UnexpectedChar(c)),
                     })
-                } else if iter.peek().is_some_and(op_has_two_chars) {
-                    let sc = iter.next().expect("just validated next via peek");
-                    Operator::Binary(match sc {
+                } else if iter.peek().is_some_and(|s| op_has_two_chars(&c, s)) {
+                    let cs = iter.next().expect("just validated next via peek");
+                    Operator::Binary(match cs {
                         '*' => Binary::Exponentiation,
                         '<' => Binary::ShiftLeft,
                         '>' => Binary::ShiftRight,
@@ -75,14 +75,14 @@ pub fn tokenize(expression: &str) -> Result<Vec<Token>, ParserError> {
     Ok(tokens)
 }
 
-/// Verify second char of suspected two-character-operator.
-fn op_has_two_chars(second_char: &char) -> bool {
-    matches!(second_char, '*' | '<' | '>')
+/// Verifies if an operator exists with these two characters, in first_second char order.
+fn op_has_two_chars(first_char: &char, second_char: &char) -> bool {
+    Operator::two_char_ops().contains(&(*first_char, *second_char))
 }
 
 /// Could be a function (like `sin`, `abs`, etc..),
 /// or a constant (like `pi`) we don't know which yet.
-fn get_func_or_const_name(c: &char, iter: &mut iter::Peekable<Chars>) -> String {
+fn read_identifier(c: &char, iter: &mut iter::Peekable<Chars>) -> String {
     let mut fn_name_str = String::from(*c);
 
     while let Some(&p) = iter.peek()
@@ -95,7 +95,10 @@ fn get_func_or_const_name(c: &char, iter: &mut iter::Peekable<Chars>) -> String 
     fn_name_str
 }
 
-fn tokenize_number(c: &char, iter: &mut iter::Peekable<Chars>) -> Result<Number, ParserError> {
+fn read_and_tokenize_number(
+    c: &char,
+    iter: &mut iter::Peekable<Chars>,
+) -> Result<Number, ParserError> {
     let mut num_str = String::from(*c);
 
     while let Some(&p) = iter.peek()

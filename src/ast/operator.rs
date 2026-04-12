@@ -43,6 +43,11 @@ impl Operator {
         }
     }
 
+    /// Return an array of tuple-chars containing operators with 2 characters.
+    pub fn two_char_ops() -> [(char, char); 3] {
+        [('<', '<'), ('>', '>'), ('*', '*')]
+    }
+
     /// Determines if an ambiguous operator (such as `-`) is considered
     /// unary or infix given the provided `tokens` context.
     pub(crate) fn is_unary_context(tokens_context: &[Token]) -> bool {

@@ -1,5 +1,7 @@
 use std::{iter, str::Chars};
 
+use calcinum::Formatting;
+
 #[derive(Default, Debug)]
 pub struct Context {
     /// (String, Option<String>) = (expression, Some(expression_result) | None if expression produced an error)
@@ -32,45 +34,75 @@ impl Context {
     pub fn parse_and_eval(&mut self, expression: &str) {
         let mut output = String::new();
         let mut iter = expression.chars().peekable();
+        let mut bin_fmt_sep = String::new();
+        let mut bin_fmt_grp = 0;
 
         while let Some(c) = iter.next() {
-            if c != '@' {
-                output.push(c);
-            } else {
-                // c == '@' here
-                let Some(i) = self.parse_history_ref(&mut iter) else {
-                    println_red!(
-                        "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
-                    );
-                    self.push_history(expression, None);
-                    return;
-                };
-
-                if i == 0 || i > self.history.len() {
-                    println_red!("Line '{i}' does not exist.");
-                    self.push_history(expression, None);
-                    return;
+            match c {
+                ':' => {
+                    if let Some(cc) = iter.peek()
+                        && *cc == 'b'
+                    {
+                        iter.next();
+                        while let Some(cc) = iter.next() {
+                            if iter.peek().is_none() {
+                                // curr on last item
+                                if cc.is_ascii_digit() {
+                                    bin_fmt_grp = cc.to_string().parse::<usize>().unwrap();
+                                } else {
+                                    bin_fmt_sep.push(cc);
+                                }
+                            } else {
+                                bin_fmt_sep.push(cc);
+                            }
+                        }
+                    }
                 }
-
-                let Some(val) = self.resolve_history(i) else {
-                    println_red!(
-                        "Line '{i}' had an error result. Error results cannot be used in expressions."
-                    );
-                    self.push_history(expression, None);
-                    return;
-                };
-
-                output.push_str(val);
+                '@' => {
+                    let Some(i) = self.parse_history_ref(&mut iter) else {
+                        println_red!(
+                            "Unable to parse provided line. Expected format is '@1' where '1' is the target line."
+                        );
+                        self.push_history(expression, None);
+                        return;
+                    };
+                    if i == 0 || i > self.history.len() {
+                        println_red!("Line '{i}' does not exist.");
+                        self.push_history(expression, None);
+                        return;
+                    }
+                    let Some(val) = self.resolve_history(i) else {
+                        println_red!(
+                            "Line '{i}' had an error result. Error results cannot be used in expressions."
+                        );
+                        self.push_history(expression, None);
+                        return;
+                    };
+                    output.push_str(val);
+                }
+                _ => output.push(c),
             }
         }
 
-        self.eval(&output);
+        let bin_fmt = if bin_fmt_sep.is_empty() {
+            None
+        } else {
+            Some(bin_fmt_sep.as_str())
+        };
+        self.eval(&output, bin_fmt, bin_fmt_grp);
     }
 
-    fn eval(&mut self, expression: &str) {
+    fn eval(&mut self, expression: &str, bin_fmt_separator: Option<&str>, bin_fmt_grouping: usize) {
         match calcinum::eval(expression) {
             Ok(r) => {
                 println_green!("{r}");
+                if let Some(sep) = bin_fmt_separator {
+                    let n = r.format(Formatting::Binary {
+                        separator: sep.to_string(),
+                        grouping: bin_fmt_grouping,
+                    });
+                    println_green!("{n}");
+                }
                 self.push_history(expression, Some(r.to_string()));
             }
             Err(e) => {

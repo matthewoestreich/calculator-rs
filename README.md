@@ -32,16 +32,16 @@ There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode)
 
 # Design
 
-## Operators
-
 - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`). Please see [here for more info on order of operations](#operators)
-- Operators with order of operations. Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
+- Parentheses (`(`, `)`) are considered control tokens and do not participate in precedence.
 - Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
   - `0.1 + 0.2 = 0.3`
   - `2 - 1.1 = 0.9`
   - `1 / 2 = 0.5`
 - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
   - `2.2 << 2 = 8` (coerced into `2 << 2`)
+
+## Operators
 
 | Operator | Operation      | Precedence  | Arity  | Associativity |
 | -------- | -------------- | ----------- | ------ | ------------- |

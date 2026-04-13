@@ -359,6 +359,7 @@ mod test {
     #[case::no_binary_prefix_dont_treat_as_binary("10101011001", "10101011001")]
     #[case::from_str5("0b1010", "10")]
     #[case::from_str6("0b1010.1010", "10.10")]
+    #[case::from_str7("0b-11110000010100011111", "-984351")]
     #[should_panic]
     #[case::from_str_panic("abcd", "")]
     #[should_panic]

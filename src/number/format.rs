@@ -208,8 +208,11 @@ mod test {
 
     #[test]
     fn foofoo() {
-        let n = "2089245787934".parse::<Number>().unwrap();
-        println!("{n:b}");
+        let n = "352.81".parse::<Number>().unwrap();
+        println!(
+            "original = {n:?}\n\nbinary scientific = {n:b}\n\npure binary = {}",
+            Number::expand_scientific(&format!("{n:b}"))
+        );
         /*
         // Works : "1111011" = 123
         let xx = "1111011".parse::<Number>().unwrap();

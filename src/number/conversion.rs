@@ -226,7 +226,7 @@ fn bigfloat_from_bin_str(s: &str) -> BigFloat {
         BigFloat::parse(
             s,
             AstroRadix::Bin,
-            usize::MAX,
+            64,
             AstroRoundingMode::None,
             &mut cc.borrow_mut(),
         )
@@ -304,10 +304,9 @@ mod test {
             x.order()
         );
         assert_eq!(
-            x.to_string(),
+            format!("{x}"),
             expect_str,
-            "expected string '{expect_str}' got string '{}'",
-            x
+            "expected string '{expect_str}' got string '{x}'",
         );
     }
 

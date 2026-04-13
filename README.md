@@ -258,13 +258,13 @@ Append expression to current expression.
 use calcinum::Calculator;
 
 let mut c = Calculator::new();
-c.expression("(1+1)");
+c.append("(1+1)");
 // Appended to current expression; does not replace it.
-c.expression("*2/12-5*99");
+c.append("*2/12-5*99");
 println!("{}", c.expression()); // "(1+1)*2/12-5*99"
 ```
 
-You can combine `expression("...")` with key `press(Key::_)` in any order.
+You can combine `append("...")` with key `press(Key::_)` in any order.
 
 ```rust
 use calcinum::{Calculator, Key};
@@ -275,7 +275,7 @@ let mut c = Calculator::new();
 c.press(Key::ParenthesesOpen);
 c.press(Key::Two);
 c.press(Key::Add);
-c.expression("8)/2");
+c.append("8)/2");
 
 // View current expression
 println!("{}", c.expression()); // "(2+8)/2"

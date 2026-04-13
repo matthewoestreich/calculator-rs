@@ -6,16 +6,6 @@
 
 # Getting Started
 
-## CLI
-
-There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode). Please see [CLI Usage](#cli-usage) for examples.
-
-| Description                                                                                      | Argument         | Shorthand |
-| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
-| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
-| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
-| Display current version.                                                                         | `--version`      | `-v`      |
-
 ## Library
 
 You can either work directly with the `Number` enum, use the `Calculator` struct, or simply evaluate expressions with the exposed `calcinum::eval` function.
@@ -27,6 +17,16 @@ Please see [Library Usage](#library-usage) for examples
   - This makes it easy to input and compute expressions without worrying about the underlying parsing or evaluation logic.
 - The `Number` enum represents numeric values.
   - It provides a flexible type for working with arbitrarily large numbers and supports arithmetic, bitwise operations, and more.
+
+## CLI
+
+There are two modes; [command mode](#command-mode) and [shell mode](#shell-mode). Please see [CLI Usage](#cli-usage) for examples.
+
+| Description                                                                                      | Argument         | Shorthand |
+| ------------------------------------------------------------------------------------------------ | ---------------- | --------- |
+| Provide no arguments to enter [shell mode](#shell-mode)                                          |                  |           |
+| Provide an expression enclosed in quotes (**single quotes reccommended**) for instant evaluation | `'<expression>'` |           |
+| Display current version.                                                                         | `--version`      | `-v`      |
 
 ---
 

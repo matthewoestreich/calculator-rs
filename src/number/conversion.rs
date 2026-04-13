@@ -307,7 +307,7 @@ mod test {
             x.to_string(),
             expect_str,
             "expected string '{expect_str}' got string '{}'",
-            x.to_string()
+            x
         );
     }
 

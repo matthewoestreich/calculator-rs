@@ -54,7 +54,7 @@ impl Number {
     /// use calcinum::Number;
     ///
     /// let n = "-123.123".parse::<Number>().expect("Number::Decimal");
-    /// assert_eq!(n.to_hex_str(true) "-7B.7B".to_string());
+    /// assert_eq!(n.to_hex_str(true), "-7B.7B".to_string());
     /// assert_eq!(n.to_hex_str(false), "-7b.7b".to_string());
     /// ```
     pub fn to_hex_str(&self, uppercase: bool) -> String {

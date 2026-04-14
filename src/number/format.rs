@@ -226,6 +226,7 @@ impl fmt::Binary for Number {
 // ========================== Formatting =====================================================
 // ===========================================================================================
 
+#[derive(Debug, Clone)]
 /// [`Number`] can contain arbitrarily sized numbers, so we cannot use the built-in formatting.
 pub enum Formatting {
     /// How many digits to show after the decimal.
@@ -288,15 +289,13 @@ impl Formatting {
     /// Formats a [`Number`] with `self` formatting.
     /// See the documentation for [`Formatting` variants](crate::Formatting#variants) for more details.
     pub fn apply(&self, number: &Number) -> String {
-        match self {
-            Formatting::Decimal { scale: precision } => {
-                Self::apply_decimal_digits_formatting(number, *precision)
-            }
+        match *self {
+            Formatting::Digits { width } => Self::apply_digits_formatting(number, width),
+            Formatting::Decimal { scale } => Self::apply_decimal_digits_formatting(number, scale),
             Formatting::Binary {
-                separator,
-                group_by: grouping,
-            } => Self::apply_binary_formatting(number, separator, *grouping),
-            Formatting::Digits { width } => Self::apply_digits_formatting(number, *width),
+                ref separator,
+                group_by,
+            } => Self::apply_binary_formatting(number, separator, group_by),
         }
     }
 

@@ -82,46 +82,17 @@ You can use constants within expressions. We simply replace the constant with it
 | -------- | ----------------------------------------------------------- | ----------------------- |
 | `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` |
 
+# CLI Usage
+
 ## Formatting
 
-### Binary Strings
+The formatting delimiter is a colon `:` and must be placed at the end of the line. Any expression to the right of the format delimiter will be treated as formatting syntax!
 
-#### `Number::Int`
+| Output        | Syntax                      | Example                                                                  |
+| ------------- | --------------------------- | ------------------------------------------------------------------------ |
+| Binary string | `:b<separator><group by n>` | - `:b 4` -> `1001 1010 1110 0101` <br> - `:b_4` -> `1001_1010_1110_0101` |
 
-We format `Number::Int` as traditional binary - simply convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
-
-- The binary string to start with `0b`
-- Optional `-` sign (for negative numbers) directly following the `0b` prefix
-
-```rust
-let i = 123.to_number(); // Number::Int(123)
-let bs = format!("{i:b}"); // "1111011"
-// Parse binary string back into `Number` - needs "0b" prefix.
-let s = format!("0b{bs}");
-let n = s.parse::<Number>().unwrap(); // Number::Int(123)
-```
-
-#### `Number::Decimal`
-
-We format `Number::Decimal` by literally converting the integer part and fractional part into standalone binary strings, then joining them with a decimal. **To parse a binary string into a `Number::Decimal` we expect:**
-
-- The binary string to start with `0b`
-- Optional `-` sign (for negative numbers) directly following the `0b` prefix
-- A decimal separating the integer part from the fractional part
-
-```rust
-let i = 382.619.to_number(); // Number::Decimal(382.619)
-let bs = format!("{i:b}"); // "101111110.1001101011"
-// Parse binary string back into `Number` - needs "0b" prefix.
-let s = format!("0b{bs}");
-let n = s.parse::<Number>().unwrap(); // Number::Decimal(382.619)
-```
-
-# Examples
-
-## CLI Usage
-
-### Command Mode
+## Command Mode
 
 Command mode operates as a standard CLI interface, accepting a command and writing its output to the terminal.
 
@@ -140,7 +111,7 @@ $ calcinum '!abs(-10)'
 -11
 ```
 
-### Shell Mode
+## Shell Mode
 
 Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using `@N`, where `N` denotes the line number of the referenced result.
 
@@ -195,9 +166,9 @@ Line '10' does not exist.
 
 </details>
 
-## Library Usage
+# Library Usage
 
-### Number
+## Number
 
 **Create `Number::Int` where calculation produces `Number::Decimal`**
 
@@ -236,7 +207,40 @@ u128::MAX.to_number(); // Number::Int(340282366920938463463374607431768211455)
 i128::MIN.to_number(); // Number::Int(-170141183460469231731687303715884105728)
 ```
 
-### Calculator
+**Converting to, and from, binary strings**
+
+`Number::Int`
+
+We format `Number::Int` as traditional binary - simply convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
+
+- The binary string to start with `0b`
+- Optional `-` sign (for negative numbers) directly following the `0b` prefix
+
+```rust
+let i = 123.to_number(); // Number::Int(123)
+let bs = format!("{i:b}"); // "1111011"
+// Parse binary string back into `Number` - needs "0b" prefix.
+let s = format!("0b{bs}");
+let n = s.parse::<Number>().unwrap(); // Number::Int(123)
+```
+
+`Number::Decimal`
+
+We format `Number::Decimal` by literally converting the integer part and fractional part into standalone binary strings, then joining them with a decimal. **To parse a binary string into a `Number::Decimal` we expect:**
+
+- The binary string to start with `0b`
+- Optional `-` sign (for negative numbers) directly following the `0b` prefix
+- A decimal separating the integer part from the fractional part
+
+```rust
+let i = 382.619.to_number(); // Number::Decimal(382.619)
+let bs = format!("{i:b}"); // "101111110.1001101011"
+// Parse binary string back into `Number` - needs "0b" prefix.
+let s = format!("0b{bs}");
+let n = s.parse::<Number>().unwrap(); // Number::Decimal(382.619)
+```
+
+## Calculator
 
 **You can simulate pressing keys on a calculator.**
 
@@ -325,7 +329,7 @@ let result = c.calculate().unwrap();
 println!("{result:?}"); // Number::Int(5)
 ```
 
-### Evaluate Expressions
+## Evaluate Expressions
 
 You can acheive the same thing via `Calculator`, granted it will be more lines of code, hence the helper.
 

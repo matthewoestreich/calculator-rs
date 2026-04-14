@@ -12,11 +12,9 @@ Please see [here to read more about our design decisions](#design), including op
 
 Please see [Library Usage](#library-usage) for examples
 
-| Use                                       | For                                                                                                                                                         |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`calcinum::eval`](#evaluate-expressions) | Evaluating expressions while correctly handling operator precedence without any bells or whistles                                                           |
-| [`calcinum::Number`](#number)             | Working with arbitrary numeric values with support for arithmetic, bitwise operations, and more                                                             |
-| [`calcinum::Calculator`](#calculator)     | Traditional calculator behavior - simulate pressing buttons or entering expressions - it evaluates expressions while correctly handling operator precedence |
+- [`calcinum::eval`](#evaluate-expressions) : Evaluates expressions while correctly handling operator precedence without any bells or whistles
+- [`calcinum::Number`](#number) : Work with arbitrary numeric values with support for arithmetic, bitwise operations, and more
+- [`calcinum::Calculator`](#calculator) : Traditional calculator behavior - simulate pressing buttons or entering expressions - it evaluates expressions while correctly handling operator precedence
 
 ## CLI
 

@@ -129,6 +129,10 @@ impl Number {
 
     /// Converts an `f64` into `Number` without guardrails.
     ///
+    /// <div class="warning">Panics</div>
+    ///
+    /// Panics if something goes wrong while converting `n` into `BigDecimal`.
+    ///
     /// ```rust
     /// use calcinum::Number;
     ///
@@ -136,10 +140,6 @@ impl Number {
     /// let expect = "12.12".parse::<Number>().expect("Number::Decimal");
     /// assert_eq!(number, expect);
     /// ```
-    ///
-    /// # Panics
-    ///
-    /// Panics if something goes wrong while converting `n` into `BigDecimal`.
     pub fn from_f64_unchecked(n: f64) -> Self {
         let bd = n
             .to_string()

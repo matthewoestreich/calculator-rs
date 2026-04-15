@@ -376,6 +376,9 @@ impl Formatting {
         if bin_str.is_empty() {
             return String::new();
         }
+        if grouping == 0 {
+            return bin_str.to_string();
+        }
 
         let (sign, digits) = if let Some(stripped) = bin_str.strip_prefix('-') {
             ("-", stripped)
@@ -385,7 +388,7 @@ impl Formatting {
 
         let len = digits.len();
         let target_len = Formatting::next_pos_multiple_inclusive(grouping, len);
-        let pad_by = target_len - len;
+        let pad_by = target_len.saturating_sub(len);
 
         let mut padded = "0".repeat(pad_by);
         padded.push_str(digits);

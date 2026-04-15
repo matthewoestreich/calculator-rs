@@ -240,8 +240,8 @@ impl fmt::UpperHex for Number {
 // ========================== Formatting =====================================================
 // ===========================================================================================
 
-#[derive(Debug, Clone)]
 /// [`Number`] can contain arbitrarily sized numbers, so we cannot use the built-in formatting.
+#[derive(Debug, Clone)]
 pub enum Formatting {
     /// How many digits to show after the decimal.
     ///

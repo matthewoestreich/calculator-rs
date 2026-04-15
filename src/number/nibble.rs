@@ -39,7 +39,7 @@ impl Nibble {
         if uppercase {
             s.to_uppercase()
         } else {
-            s.to_string()
+            s.to_lowercase()
         }
     }
 }

@@ -109,12 +109,17 @@ impl Number {
     /// let b = Number::from(i128::MIN);
     /// assert_eq!(b.to_i128_saturating(), i128::MIN);
     ///
+    /// // This number won't fit into `i128` or `u128`.
+    /// let big = "999999999999999999999999999999999999999999999999999999999";
+    /// let big_num = big.parse::<Number>().expect("Number::Int");
+    /// assert_eq!(big_num.to_i128_saturating(), i128::MAX);
+    ///
     /// // `u128::MAX` as decimal with fractional part.
-    /// let c = "340282366920938463463374607431768211455.123456789"
+    /// let d = "340282366920938463463374607431768211455.123456789"
     ///     .parse::<Number>()
     ///     .expect("Number::Decimal");
-    /// assert!(c.is_decimal());
-    /// assert_eq!(c.to_i128_saturating(), i128::MAX);
+    /// assert!(d.is_decimal());
+    /// assert_eq!(d.to_i128_saturating(), i128::MAX);
     /// ````
     pub fn to_i128_saturating(&self) -> i128 {
         match self {

@@ -38,19 +38,23 @@ impl Number {
     /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
     ///
     /// If your exponent must fit into <code>i64</code> you can convert your
-    /// <code>Number::Int(_)</code instance into <code>Number::Decimal(_)</code> by calling
+    /// <code> Number::Int(..)</code> instance into <code>Number::Decimal(..)</code> by calling
     /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow(some_i64)</code>
     ///
     /// </div>
     ///
     /// ```rust
-    /// use calcinum::Number;
+    /// use calcinum::{Number, NumberError};
     ///
     /// let a = Number::from(2);
     /// assert_eq!(a.pow(4), Ok(Number::from(16)));
     ///
     /// let b = "12.3".parse::<Number>().expect("Number::Decimal");
     /// assert_eq!(b.pow(4), Ok(Number::from_f64_unchecked(22888.6641)));
+    ///
+    /// let c = Number::from(1);
+    /// let result = c.pow(u32::MAX as i64 + 1);
+    /// assert!(matches!(result, Err(NumberError::InvalidExponent { .. })));
     /// ```
     pub fn pow(&self, exponent: i64) -> Result<Self, NumberError> {
         match self {
@@ -74,13 +78,13 @@ impl Number {
     /// <code>Number::Int(_)</code>, then the exponent must fit in <code>u32</code>!
     ///
     /// If your exponent must fit into <code>i64</code> you can convert your
-    /// <code>Number::Int(_)</code instance into <code>Number::Decimal(_)</code> by calling
+    /// <code>Number::Int(..)</code> instance into <code>Number::Decimal(..)</code> by calling
     /// <code>my_number_int.promote()</code> and then calling <code>my_number_int.pow_assign(some_i64)</code>
     ///
     /// </div>
     ///
     /// ```rust
-    /// use calcinum::Number;
+    /// use calcinum::{Number, NumberError};
     ///
     /// let mut a = Number::from(2);
     /// let _possible_error = a.pow_assign(4);
@@ -89,6 +93,10 @@ impl Number {
     /// let mut b = "12.3".parse::<Number>().expect("Number::Decimal");
     /// let _possible_error = b.pow_assign(4);
     /// assert_eq!(b, Number::from_f64_unchecked(22888.6641));
+    ///
+    /// let mut c = Number::from(1);
+    /// let result = c.pow_assign(u32::MAX as i64 + 1);
+    /// assert!(matches!(result, Err(NumberError::InvalidExponent { .. })));
     /// ```
     pub fn pow_assign(&mut self, exponent: i64) -> Result<(), NumberError> {
         *self = self.pow(exponent)?;

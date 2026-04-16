@@ -65,7 +65,7 @@ impl Number {
     /// let uppercase = false;
     /// assert_eq!(n.to_hex_str(uppercase), "-7b.7b".to_string());
     /// ```
-    pub fn to_hex_str(&self, uppercase: bool) -> String {
+    pub fn to_hexadecimal_str(&self, uppercase: bool) -> String {
         if uppercase {
             format!("{self:X}")
         } else {

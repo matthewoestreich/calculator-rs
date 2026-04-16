@@ -187,10 +187,10 @@ impl Number {
             None => (false, s),
         };
 
-        let base = Number::from(16);
         let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
         let int_part_len = int_part.len();
         let fract_part_len = fract_part.len();
+        let base = Number::from(16);
 
         let mut int = int_part.chars().enumerate().try_fold(
             Number::ZERO,
@@ -203,18 +203,22 @@ impl Number {
             },
         )?;
 
-        if fract_part_len > 0
-            && let Some(fract) = fract_part.chars().enumerate().try_fold(
-                Number::ZERO,
-                |acc, (i, c)| -> Option<Number> {
+        let maybe_fract = if fract_part_len == 0 {
+            None
+        } else {
+            fract_part
+                .chars()
+                .enumerate()
+                .try_fold(Number::ZERO, |acc, (i, c)| -> Option<Number> {
                     let exponent = fract_part_len as u32 - 1 - i as u32;
                     let multiplyer = base.pow(exponent as i64).ok()?;
                     let hexchar = HexChar::try_from(&c).ok()?;
                     let digit = Number::from(hexchar);
                     Some(acc + digit * multiplyer)
-                },
-            )
-        {
+                })
+        };
+
+        if let Some(fract) = maybe_fract {
             // shift fract into decimal position, e.g., `int + fract / 10.pow(fract_digit_count)`
             let scale = Number::from(10).pow(fract.digit_count() as i64)?;
             int += fract / scale;

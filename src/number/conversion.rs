@@ -172,6 +172,13 @@ impl Number {
     /// - Non hexadecimal characters
     ///   - `'-'` : a single negative sign; required to be at the start of the string, after the `"0x"` prefix
     ///   - `'.'` : a single decimal; allowed anywhere to the right of the negative sign.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = "0x-63A.2675".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, "-1594.9845".parse::<Number>().expect("eq"));
+    /// ```
     pub fn from_hexadecimal_str(hex_str: &str) -> Result<Number, NumberError> {
         if !Self::is_hexadecimal_str(hex_str) {
             return Err(NumberError::Parsing {
@@ -286,6 +293,14 @@ impl Number {
     }
 
     /// Converts a decimal string to a hexadecimal string.
+    /// # A valid decimal string
+    /// ```text
+    ///   -123.123`
+    ///   | | |
+    ///   | | +-- A single decimal anywhere after `-`
+    ///   | +-- Any amount off digits 0-9
+    ///   +---- A negative sign; only allowed as first char
+    /// ```
     pub(crate) fn decimal_str_to_hexadecimal_str(
         decimal_str: &str,
         uppercase: bool,
@@ -306,15 +321,15 @@ impl Number {
 
         let mut int_part = String::new();
         let mut fract_part = String::new();
-        let mut seen_dec = false;
+        let mut seen_decimal = false;
 
         for c in iter {
             match c {
                 // Already checked front
                 '-' => return Err(NumberError::InvalidArgument),
-                '.' if !seen_dec => seen_dec = true,
+                '.' if !seen_decimal => seen_decimal = true,
                 c if c.is_ascii_digit() => {
-                    if !seen_dec {
+                    if !seen_decimal {
                         int_part.push(c);
                     } else {
                         fract_part.push(c);
@@ -344,7 +359,7 @@ impl Number {
         let mut output = int_str.chars().rev().collect();
 
         // RETURN if there is no more work to do.
-        if fract_part.is_empty() {
+        if !seen_decimal {
             return Ok(output);
         }
 
@@ -420,12 +435,10 @@ impl Number {
 
         let s = s.strip_prefix("0b").unwrap_or(s);
 
-        // binary string has no decimal, parse binary string as Int variant.
-        Ok(if !s.contains('.') {
+        let number = if !s.contains('.') {
             let bi = BigInt::from_str_radix(s, 2)?;
             Number::Int(bi)
         } else {
-            // binary string has a decimal, parse binary string as Decimal variant.
             let is_negative = s.starts_with('-');
             let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
             let mut dec_str = Self::binary_str_to_decimal_str(lhs);
@@ -437,7 +450,9 @@ impl Number {
                 dec_str = format!("-{dec_str}");
             }
             Number::Decimal(BigDecimal::from_str_radix(&dec_str, 10)?)
-        })
+        };
+
+        Ok(number)
     }
 
     /// Assumes you have already validated that what you are passing in is ACTUALLY a binary string!

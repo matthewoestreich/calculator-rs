@@ -142,10 +142,9 @@ impl Number {
     }
 
     /// Converts an `f64` into `Number` without guardrails.
-    ///
-    /// <div class="warning">
-    ///     Panics! if something goes wrong while converting <code>n</code> into <code>BigDecimal</code>.
-    /// </div>
+    /// # ℹ️ IMPORTANT
+    ///  panics!
+    /// # if something goes wrong while converting `n` into BigDecimal.
     ///
     /// ```rust
     /// use calcinum::Number;
@@ -165,7 +164,6 @@ impl Number {
     /// Performs hexadecimal validation to ensure we were given a hexadecimal string.
     /// Converts said hexadecimal string into `Number`.
     ///
-    /// [!IMPORTANT]
     /// - We expect a hexadecimal string to start with `"0x"`.
     /// - An empty input string will return an `Err`.
     /// - A hexadecimal string can contain (in any order):
@@ -227,26 +225,27 @@ impl Number {
         Ok(if is_signed { -int } else { int })
     }
 
-    /// Returns `None` if `decimal_str` is not considered to be a valid decimal string.
-    /// **Empty strings are allowed, we simply return `Some(String::from("0"))`.**
-    /// A valid decimal string meets the following requirements:
-    /// - May contain a negative sign, e.g., `-` at the start of the string.
-    /// - May contain a single decimal, e.g., '.'.
-    /// - Outside of '-' or '.', can only contain digits '0'-'9'.
+    /// Converts a decimal string to a binary string
+    /// # A valid decimal string
+    /// ```text
+    ///   -123.123`
+    ///   | | |
+    ///   | | +-- A single decimal anywhere after `-`
+    ///   | +-- Any amount off digits 0-9
+    ///   +---- A negative sign; only allowed as first char
+    /// ```
     pub(crate) fn decimal_str_to_binary_str(decimal_str: &str) -> Option<String> {
         if decimal_str == "0" || decimal_str.is_empty() {
             return Some("0".to_string());
         }
         if !Self::is_decimal_str(decimal_str) {
-            // Since `is_decimal_str` will return `false` for empty strings, but we want to
-            // allow empty strings, we only return `None` if the string is not actually empty.
-            if !decimal_str.is_empty() {
-                return None;
-            }
+            return None;
         }
+
         let is_negative = decimal_str.starts_with('-');
         let decimal_str = decimal_str.trim_start_matches('-');
         let mut digits = Vec::with_capacity(decimal_str.len());
+
         for c in decimal_str.chars() {
             if let Some(d) = c.to_digit(10) {
                 digits.push(d as u8);
@@ -254,28 +253,35 @@ impl Number {
                 return None;
             }
         }
+
         let mut binary_bits = String::new();
+
         while !digits.is_empty() {
             let mut remainder = 0;
             let mut next_digits = Vec::with_capacity(digits.len());
+
             // Long division by 2
             for &digit in &digits {
                 let current = digit + remainder * 10;
                 let quotient = current / 2;
+
                 remainder = current % 2;
+
                 // Only push if it's not a leading zero
                 if !next_digits.is_empty() || quotient > 0 {
                     next_digits.push(quotient);
                 }
             }
+
             // The remainder of the full division is our binary digit
             binary_bits.push(if remainder == 0 { '0' } else { '1' });
             digits = next_digits;
         }
+
         if is_negative {
             binary_bits.push('-');
         }
-        // Reverse to get the correct order (MSB first)
+
         Some(binary_bits.chars().rev().collect())
     }
 

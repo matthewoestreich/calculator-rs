@@ -213,8 +213,7 @@ i128::MIN.to_number(); // Number::Int(-170141183460469231731687303715884105728)
 
 We format `Number::Int` as traditional binary - simply convert to a binary string. **To parse a binary string into a `Number::Int` we expect:**
 
-- The binary string to start with `0b`
-- Optional `-` sign (for negative numbers) directly following the `0b` prefix
+- The binary string to start with `0b` or `-0b` for negative numbers
 
 ```rust
 let i = 123.to_number(); // Number::Int(123)
@@ -228,8 +227,7 @@ let n = s.parse::<Number>().unwrap(); // Number::Int(123)
 
 We format `Number::Decimal` by literally converting the integer part and fractional part into standalone binary strings, then joining them with a decimal. **To parse a binary string into a `Number::Decimal` we expect:**
 
-- The binary string to start with `0b`
-- Optional `-` sign (for negative numbers) directly following the `0b` prefix
+- The binary string to start with `0b` or `-0b` for negative numbers
 - A decimal separating the integer part from the fractional part
 
 ```rust

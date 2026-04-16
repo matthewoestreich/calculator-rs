@@ -176,7 +176,7 @@ impl Number {
     /// ```rust
     /// use calcinum::Number;
     ///
-    /// let a = "0x-63A.2675".parse::<Number>().expect("Number::Decimal");
+    /// let a = "-0x63A.2675".parse::<Number>().expect("Number::Decimal");
     /// assert_eq!(a, "-1594.9845".parse::<Number>().expect("eq"));
     /// ```
     pub fn from_hexadecimal_str(hex_str: &str) -> Result<Number, NumberError> {
@@ -186,12 +186,12 @@ impl Number {
             });
         }
 
-        let s = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-        let (is_signed, s) = match s.strip_prefix('-') {
+        let (is_signed, s) = match hex_str.strip_prefix('-') {
             Some(rest) => (true, rest),
-            None => (false, s),
+            None => (false, hex_str),
         };
 
+        let s = s.strip_prefix("0x").unwrap_or(hex_str);
         let (int_part, fract_part) = s.split_once('.').unwrap_or((s, ""));
         let int_part_len = int_part.len();
         let fract_part_len = fract_part.len();
@@ -249,8 +249,11 @@ impl Number {
             return None;
         }
 
-        let is_negative = decimal_str.starts_with('-');
-        let decimal_str = decimal_str.trim_start_matches('-');
+        let (is_negative, decimal_str) = match decimal_str.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, decimal_str),
+        };
+
         let mut digits = Vec::with_capacity(decimal_str.len());
 
         for c in decimal_str.chars() {
@@ -420,11 +423,10 @@ impl Number {
     /// then converts the binary string into `Number`.
     fn from_binary_str(s: &str) -> Result<Self, NumberError> {
         let s = s.trim();
-
-        // We were give "" or just the prefix to a binary string "0b"
-        if s.is_empty() || s == "0b" {
+        // We were given "" or just the prefix to a binary string "0b" or "-0b"
+        if s.is_empty() || s == "-0b" || s == "0b" || s == "-" {
             return Err(NumberError::Parsing {
-                value: "'' binary str cannot be empty".to_string(),
+                value: format!("'{s}' either contains no binary or it is empty"),
             });
         }
         if !Self::is_binary_str(s) {
@@ -433,26 +435,26 @@ impl Number {
             });
         }
 
+        let (is_negative, s) = match s.strip_prefix('-') {
+            Some(rest) => (true, rest),
+            None => (false, s),
+        };
+
         let s = s.strip_prefix("0b").unwrap_or(s);
 
         let number = if !s.contains('.') {
-            let bi = BigInt::from_str_radix(s, 2)?;
-            Number::Int(bi)
+            Number::Int(BigInt::from_str_radix(s, 2)?)
         } else {
-            let is_negative = s.starts_with('-');
             let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
             let mut dec_str = Self::binary_str_to_decimal_str(lhs);
             if !rhs.is_empty() {
-                dec_str.push('.');
-                dec_str.push_str(&Self::binary_str_to_decimal_str(rhs));
-            }
-            if is_negative {
-                dec_str = format!("-{dec_str}");
+                let rhs_bin = format!(".{}", Self::binary_str_to_decimal_str(rhs));
+                dec_str.push_str(&rhs_bin);
             }
             Number::Decimal(BigDecimal::from_str_radix(&dec_str, 10)?)
         };
 
-        Ok(number)
+        Ok(if is_negative { -number } else { number })
     }
 
     /// Assumes you have already validated that what you are passing in is ACTUALLY a binary string!
@@ -666,17 +668,17 @@ mod test {
     #[case::from_str1("2.2", "2.2")]
     #[case::from_str2("1", "1")]
     #[case::from_str3("0b00000000000001110001110101110101.1000011011", "466293.539")]
-    #[case::from_str4("0b-00000000000001110001110101110101.1000011011", "-466293.539")]
+    #[case::from_str4("-0b00000000000001110001110101110101.1000011011", "-466293.539")]
     #[case::no_binary_prefix_dont_treat_as_binary("10101011001", "10101011001")]
     #[case::from_str5("0b1010", "10")]
     #[case::from_str6("0b1010.1010", "10.10")]
-    #[case::from_str7("0b-11110000010100011111", "-984351")]
+    #[case::from_str7("-0b11110000010100011111", "-984351")]
     #[should_panic]
     #[case::from_str_panic("abcd", "")]
     #[should_panic]
     #[case::from_str_panic_contains_invalid_num_3("0b101010131001", "")]
     #[should_panic]
-    #[case::from_str_panic_multiple_neg("0b-101010-131001", "")]
+    #[case::from_str_panic_multiple_neg("-0b101010-131001", "")]
     #[should_panic]
     #[case::from_str_panic_multiple_decimals("0b1010.1013.1001", "")]
     #[should_panic]
@@ -691,7 +693,7 @@ mod test {
 
     #[rstest]
     #[case::from_str_hex1("0x20FDE.3CBD04", "135134.3980548")]
-    #[case::from_str_hex2("0x-20FDE.3CBD04", "-135134.3980548")]
+    #[case::from_str_hex2("-0x20FDE.3CBD04", "-135134.3980548")]
     #[case::from_str_hex3("0x1", "1")]
     #[case::from_str_hex4(
         "0xd0d0c7c5742a63ee3d89fb998ca24c7a",
@@ -711,9 +713,9 @@ mod test {
 
     #[rstest]
     #[case::bin_str_to_number1("0b1010", "10")]
-    #[case::bin_str_to_number2("0b-1010", "-10")]
+    #[case::bin_str_to_number2("-0b1010", "-10")]
     #[case::bin_str_to_number3("0b00000000000001110001110101110101.1000011011", "466293.539")]
-    #[case::bin_str_to_number4("0b-00000000000001110001110101110101.1000011011", "-466293.539")]
+    #[case::bin_str_to_number4("-0b00000000000001110001110101110101.1000011011", "-466293.539")]
     fn binary_str_to_number(#[case] number: &str, #[case] expect: &str) {
         let x = match Number::from_str(number) {
             Ok(r) => r,

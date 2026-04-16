@@ -73,39 +73,27 @@ impl Number {
         }
     }
 
-    /// We expect a binary string to start with `"0b"`.
+    /// We expect a binary string to start with `"0b"` or `"-0b"` for negative binary strings.
     /// A binary string can contain:
     /// - Digits `0` or `1`.
-    /// - A single negative sign, e.g., `-`, required to be at the start of the string, after the `"0b"` prefix.
+    /// - A single negative sign, e.g., `-`, required to be at the start of the string
     /// - A decimal, e.g., `.` to denote a fractional number in binary form.
     pub(crate) fn is_binary_str(s: &str) -> bool {
-        if !s.starts_with("0b") || s.is_empty() {
+        if !s.starts_with("0b") && !s.starts_with("-0b") || s.is_empty() {
             return false;
         }
 
-        let bin_str = s.trim_start_matches("0b");
-        let mut iter = bin_str.chars();
+        let s = s.strip_prefix('-').unwrap_or(s);
+        let s = s.strip_prefix("0b").unwrap_or(s);
         let mut seen_decimal = false;
 
-        if bin_str.starts_with('-') {
-            iter.next();
-        }
-
-        for c in iter {
+        for c in s.chars() {
             match c {
                 // We should not see any other '-' signs.
                 '-' => return false,
-                '.' => {
-                    if seen_decimal {
-                        return false;
-                    }
-                    seen_decimal = true;
-                }
-                _ => {
-                    if c != '0' && c != '1' {
-                        return false;
-                    }
-                }
+                '.' if !seen_decimal => seen_decimal = true,
+                c if c == '0' || c == '1' => {}
+                _ => return false,
             }
         }
 
@@ -120,33 +108,21 @@ impl Number {
     /// - A single negative sign, e.g., `-`, required to be at the start of the string, after the `"0b"` prefix.
     /// - A decimal, e.g., `.` to denote a fractional number in binary form.
     pub(crate) fn is_hexadecimal_str(s: &str) -> bool {
-        if !s.starts_with("0x") || s.is_empty() {
+        if (!s.starts_with("-0x") && !s.starts_with("0x")) || s.is_empty() {
             return false;
         }
 
-        let hex_str = s.trim_start_matches("0x");
-        let mut iter = hex_str.chars();
+        let s = s.strip_prefix('-').unwrap_or(s);
+        let s = s.strip_prefix("0x").unwrap_or(s);
         let mut seen_decimal = false;
 
-        if hex_str.starts_with('-') {
-            iter.next();
-        }
-
-        for c in iter {
+        for c in s.chars() {
             match c {
-                // We should not see any more '-' signs.
+                // We should not see any other '-' signs.
                 '-' => return false,
-                '.' => {
-                    if seen_decimal {
-                        return false;
-                    }
-                    seen_decimal = true;
-                }
-                _ => {
-                    if HexChar::try_from(c).is_err() {
-                        return false;
-                    }
-                }
+                '.' if !seen_decimal => seen_decimal = true,
+                c if HexChar::try_from(c).is_ok() => {}
+                _ => return false,
             }
         }
 

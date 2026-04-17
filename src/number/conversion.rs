@@ -250,6 +250,23 @@ impl Number {
         Ok(if is_signed { -int } else { int })
     }
 
+    /// Base64 strings must be prefixed with `b64`!
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from_base64_str("b64OTk5OTk=").expect("Number::Int");
+    /// assert_eq!(a, Number::from(99999));
+    /// ```
+    pub fn from_base64_str(s: &str) -> Result<Number, NumberError> {
+        if s == "b64" || !s.starts_with("b64") {
+            return Err(NumberError::InvalidArgument);
+        }
+
+        let s = s.strip_prefix("b64").unwrap_or(s);
+        let d = Self::base64_decode(s);
+        d.parse::<Number>()
+    }
+
     /// Converts a decimal string to a binary string
     /// # A valid decimal string
     /// ```text
@@ -414,40 +431,52 @@ impl Number {
     #[allow(dead_code)]
     pub(crate) fn base64_encode(s: &str) -> String {
         let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-        let mut base64 = String::new();
+        let mut encoded = String::new();
+        let mut buf = 0;
+        let mut bits = 0;
 
-        for bytes in s.as_bytes().chunks(3) {
-            let mut buf: u32 = 0;
-
-            // Shift 24 bits (3 bytes) into our 32 bit buffer. We don't shift 32-bits
-            // (4 bytes) bc we need to get them out in 6-bit chunks (32/6=10.333, but 24/6=4)
-            for i in 0..3 {
-                buf <<= 8; // 'pre-shift' bytes
-                if i < bytes.len() {
-                    // Only put byte in if it exists, the shift
-                    // above handles padding when a byte doesnt exist.
-                    buf |= bytes[i] as u32;
-                }
-            }
-
-            // Read bits back out in 6-bit chunks.
-            for i in (0..4).rev() {
-                // We need to do this (4 - i) business bc we need the (i * 6)
-                // calculation to works even when a chunk needs padding (missing a byte).
-                if (4 - i) <= bytes.len() + 1 {
-                    let bits = (buf >> (i * 6)) & 0b111111;
-                    let ch = alpha[bits as usize];
-                    base64.push(ch as char);
-                }
-            }
-
-            // Padding.
-            for _ in 0..(3 - bytes.len()) {
-                base64.push('=');
+        for byte in s.as_bytes() {
+            buf = (buf << 8) | *byte as u32;
+            bits += 8;
+            while bits >= 6 {
+                bits -= 6;
+                let i = (buf >> bits) & 0b111111;
+                encoded.push(alpha[i as usize] as char);
             }
         }
 
-        base64
+        if bits > 0 {
+            let i = (buf << (6 - bits)) & 0b111111;
+            encoded.push(alpha[i as usize] as char);
+        }
+
+        // Padding
+        while !encoded.len().is_multiple_of(4) {
+            encoded.push('=');
+        }
+
+        encoded
+    }
+
+    /// Decode a base64 string to it's original form.
+    pub(crate) fn base64_decode(s: &str) -> String {
+        let s = s.trim_end_matches('=');
+        let alpha = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut decoded = String::new();
+        let mut buf = 0;
+        let mut bits = 0;
+
+        for byte in s.as_bytes() {
+            let value = alpha.iter().position(|c| c == byte).unwrap_or(0);
+            buf = (buf << 6) | value as u32;
+            bits += 6;
+            if bits >= 8 {
+                bits -= 8;
+                decoded.push(((buf >> bits) as u8) as char);
+            }
+        }
+
+        decoded
     }
 
     /// If the underlying value for `T` does not fit within an
@@ -686,6 +715,9 @@ impl FromStr for Number {
         if let Ok(n) = Number::from_hexadecimal_str(s) {
             return Ok(n);
         }
+        if let Ok(n) = Number::from_base64_str(s) {
+            return Ok(n);
+        }
         // If we were given a decimal string.
         if let Ok(i) = s.parse::<BigInt>() {
             return Ok(Number::Int(i));
@@ -748,6 +780,10 @@ mod test {
     #[case::from_str_panic("   ", "")]
     #[should_panic]
     #[case::from_str_panic("0b", "")]
+    #[case::from_str_b64_1("b64LTIzNDUuMTIzNQ==", "-2345.1235")]
+    #[case::from_str_b64_2("b64NDM1NDMuMzIyOTM4NDAz", "43543.322938403")]
+    #[case::from_str_b64_3("b64NDM1MjQzOTg1MjQzMzE0OQ==", "4352439852433149")]
+    #[case::from_str_b64_4("b64LTAwMDAwMDAwMC4wMDAwMDAwMDAw", "-000000000.0000000000")]
     fn from_str(#[case] number: &str, #[case] expect: &str) {
         let x = Number::from_str(number).expect("Number::from_str");
         let e = expect.parse::<Number>().expect("to parse 'expect' param");
@@ -789,9 +825,18 @@ mod test {
     #[case::b64encode("43543.322938403", "NDM1NDMuMzIyOTM4NDAz")]
     #[case::b64encode("4352439852433149", "NDM1MjQzOTg1MjQzMzE0OQ==")]
     #[case::b64encode("-000000000.0000000000", "LTAwMDAwMDAwMC4wMDAwMDAwMDAw")]
-    fn base64_encode(#[case] s: &str, #[case] expect: &str) {
+    fn base64_encode_decode(#[case] s: &str, #[case] expect: &str) {
         let encoded = Number::base64_encode(s);
-        assert_eq!(encoded, expect, "expected '{expect}' got '{encoded}'");
+        assert_eq!(
+            encoded, expect,
+            "expected encoded '{expect}' got encoded '{encoded}'"
+        );
+        let decoded = Number::base64_decode(&encoded);
+        assert_eq!(
+            decoded,
+            s.to_string(),
+            "expected decoded = '{s}' got decoded '{decoded}'"
+        );
     }
 
     #[test]

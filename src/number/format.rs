@@ -73,6 +73,18 @@ impl Number {
         }
     }
 
+    /// Formats `self` as a base64 string.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = "-2345.1235".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.to_base64_str(), "LTIzNDUuMTIzNQ==".to_string());
+    /// ```
+    pub fn to_base64_str(&self) -> String {
+        Self::base64_encode(&self.to_string())
+    }
+
     /// We expect a binary string to start with `"0b"` or `"-0b"` for negative binary strings.
     /// A binary string can contain:
     /// - Digits `0` or `1`.

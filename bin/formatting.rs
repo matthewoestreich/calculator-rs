@@ -126,7 +126,9 @@ impl Formatter {
             group_pad = Self::next_multiple(group, min_len) - min_len;
         }
 
-        let mut num_fmtd = String::with_capacity(width_pad + group_pad);
+        let cap = width_pad + group_pad + num_str.len();
+        let mut num_fmtd = String::with_capacity(cap);
+
         let pad_char = if spec.zero_pad { '0' } else { ' ' };
 
         for _ in 0..width_pad {

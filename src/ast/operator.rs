@@ -1,5 +1,6 @@
 use crate::ast::Token;
 use std::fmt;
+use varienum::variants_vec;
 
 #[derive(Debug, Clone)]
 pub enum Associativity {
@@ -75,7 +76,8 @@ impl fmt::Display for Operator {
 /// Operators with unary arity.
 ///
 
-#[derive(Debug, Clone, Copy)]
+#[variants_vec]
+#[derive(Clone, Copy)]
 pub enum Unary {
     Negate, // -
     Not,    // !
@@ -90,6 +92,15 @@ impl fmt::Display for Unary {
     }
 }
 
+impl fmt::Debug for Unary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Negate => write!(f, "-"),
+            Self::Not => write!(f, "!"),
+        }
+    }
+}
+
 /// ===========================================================================================
 /// ========================== Binary Operators ===============================================
 /// ===========================================================================================
@@ -97,7 +108,8 @@ impl fmt::Display for Unary {
 /// Operators with binary arity.
 ///
 
-#[derive(Debug, Clone, Copy)]
+#[variants_vec]
+#[derive(Clone, Copy)]
 pub enum Binary {
     Add,            // +
     Subtract,       // -
@@ -126,6 +138,24 @@ impl fmt::Display for Binary {
             Binary::Xor => write!(f, "XOR"),
             Binary::ShiftLeft => write!(f, "SHL"),
             Binary::ShiftRight => write!(f, "SHR"),
+        }
+    }
+}
+
+impl fmt::Debug for Binary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Add => write!(f, "+"),
+            Self::Subtract => write!(f, "-"),
+            Self::Multiply => write!(f, "*"),
+            Self::Divide => write!(f, "/"),
+            Self::Exponentiation => write!(f, "**"),
+            Self::Remainder => write!(f, "%"),
+            Self::And => write!(f, "&"),
+            Self::Or => write!(f, "|"),
+            Self::Xor => write!(f, "^"),
+            Self::ShiftLeft => write!(f, "<<"),
+            Self::ShiftRight => write!(f, ">>"),
         }
     }
 }

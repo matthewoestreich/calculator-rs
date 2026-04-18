@@ -1,5 +1,6 @@
 use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
+use varienum::variants_vec;
 
 ///
 /// -- Important info --
@@ -9,6 +10,7 @@ use std::{fmt, str::FromStr};
 ///           Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round towards nearest even digit.
 ///
 
+#[variants_vec]
 #[derive(Debug, Clone)]
 pub enum Function {
     Abs,

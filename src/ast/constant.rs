@@ -1,6 +1,8 @@
 use crate::ast::error::ParserError;
 use std::{fmt, str::FromStr};
+use varienum::variants_vec;
 
+#[variants_vec]
 #[derive(Debug, Clone)]
 pub enum Constant {
     PI,

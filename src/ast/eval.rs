@@ -29,6 +29,7 @@ pub fn eval(rpn_tokens: Vec<Token>) -> Result<Number, ParserError> {
                     Function::Cos => x.cos_assign()?,
                     Function::Tan => x.tan_assign()?,
                     Function::Round => x.round_assign(0),
+                    Function::Sinh => x.sinh_assign()?,
                 };
                 stack.push(x);
             }
@@ -110,6 +111,7 @@ mod test {
     #[case::evaluate_round("round(pi)", "3.0")]
     #[case::evaluate_round("round((1*13)+(99/(16-3)))", "21.0")]
     #[case::evaluate_cos("cos(12)", "0.84385395873249210465")]
+    #[case::evaluate_sinh("sinh(-27)", "-266024120300.89930834")]
     fn evaluate(#[case] raw_infix: &str, #[case] expect: &str) {
         let tokens = match tokenize(raw_infix) {
             Ok(t) => t,

@@ -95,6 +95,7 @@
 //! | `sin`    | Sine (radians) |
 //! | `cos`    | Cosine (radians) |
 //! | `tan`    | Tangent (radians) |
+//! | `sinh`   | Hyperbolic sine function |
 //!
 //! # Constants
 //!

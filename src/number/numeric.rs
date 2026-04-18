@@ -424,6 +424,58 @@ impl Number {
         })
     }
 
+    /// Hyperbolic sine function. Computes the hyperbolic y-coordinate defined by
+    /// (e^x - e^{-x}) / 2 for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(27);
+    /// let expect = "266024120300.89930834".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.sinh(), Ok(expect));
+    /// ```
+    pub fn sinh(&self) -> Result<Number, NumberError> {
+        match self {
+            Number::Int(i) => Self::sinh_str(&i.to_string()),
+            Number::Decimal(d) => Self::sinh_str(&d.to_string()),
+        }
+    }
+
+    /// Same as [`sinh`](crate::Number#method.sinh), but with `self` assignment.
+    ///
+    /// Hyperbolic sine function. Computes the hyperbolic y-coordinate defined by
+    /// (e^x - e^{-x}) / 2 for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(27);
+    /// let _possible_error = a.sinh_assign();
+    /// let expect = "266024120300.89930834".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn sinh_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.sinh()?;
+        Ok(())
+    }
+
+    /// Please see comments on `sinh` method.
+    fn sinh_str(s: &str) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let sinh_bf = og_bf.sinh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = sinh_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
+        })
+    }
+
     /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
@@ -658,5 +710,21 @@ mod test {
         let e = expect.parse::<Number>().unwrap();
         x.round_assign(round_digits);
         assert_eq!(x, e, "[round_assign] expected {e} got {r}");
+    }
+
+    #[rstest]
+    #[case::sinh1("12", "81377.395706429854222")]
+    #[case::sinh2("-34.2", "-356320890801986.12686")]
+    #[case::sinh3("-0", "0.0")]
+    #[case::sinh4("0", "0.0")]
+    #[case::sinh5("0.0", "0.0")]
+    #[case::sinh6("-0.0", "0.0")]
+    #[case::sinh7("27", "266024120300.89930834")]
+    #[case::sinh8("-27", "-266024120300.89930834")]
+    fn sinh(#[case] number: &str, #[case] expect: &str) {
+        let n = number.parse::<Number>().expect("Number");
+        let e = expect.parse::<Number>().expect("Number");
+        let r = n.sinh().expect("sinh");
+        assert_eq!(e, r, "got sinh '{r}' expected sinh '{e}'");
     }
 }

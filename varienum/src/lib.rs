@@ -50,7 +50,6 @@ pub fn variants_vec(_attr: TokenStream, item: TokenStream) -> TokenStream {
         .collect::<Vec<_>>()
         .join(",");
 
-    // 3. Generate the implementation as a raw string and parse it
     let mut generated = item.to_string();
     generated.push_str(&format!(
         "impl {} {{ 

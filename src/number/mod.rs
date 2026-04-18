@@ -125,6 +125,7 @@ impl From<&Number> for NumberOrder {
 
 #[cfg(test)]
 mod test {
+    #[allow(dead_code)]
     pub(crate) fn expand_scientific(s: &str) -> String {
         let (mantissa, exp) = s
             .split_once('e')

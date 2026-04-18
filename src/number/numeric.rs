@@ -488,7 +488,6 @@ impl Number {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::number::test::expand_scientific;
     use rstest::*;
 
     #[rstest]

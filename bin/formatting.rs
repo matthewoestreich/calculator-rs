@@ -23,7 +23,7 @@ impl FormatSpec {
         let mut zero_pad = false;
         let mut width = String::new();
         let mut group = String::new();
-        let mut kind = '\0';
+        let mut kind = None;
 
         let mut state = State::Start;
 
@@ -39,7 +39,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_ascii_alphabetic() => {
-                        kind = c;
+                        kind = Some(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexpected char '{c}' in Start")),
@@ -50,7 +50,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_alphabetic() => {
-                        kind = c;
+                        kind = Some(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexpected char '{c}' after Start")),
@@ -61,7 +61,7 @@ impl FormatSpec {
                         state = State::Width;
                     }
                     c if c.is_ascii_alphabetic() => {
-                        kind = c;
+                        kind = Some(c);
                         state = State::Kind;
                     }
                     _ => return Err(format!("unexxpected char '{c}' in Width")),
@@ -79,6 +79,10 @@ impl FormatSpec {
                 },
             }
         }
+
+        let Some(kind) = kind else {
+            return Err("kind is required!".to_string());
+        };
 
         let width = if width.is_empty() {
             None

@@ -8,7 +8,13 @@ macro_rules! println_red {
 
 macro_rules! println_green {
     ($($arg:tt)*) => {
-        println!("\x1b[92m{}\x1b[0m", format_args!($($arg)*));
+        println!("\x1b[92m{}\x1b[0m", format_args!($($arg)*))
+    };
+}
+
+macro_rules! println_yellow {
+    ($($arg:tt)*) => {
+        println!("\x1b[93m{}\x1b[0m", format_args!($($arg)*))
     };
 }
 

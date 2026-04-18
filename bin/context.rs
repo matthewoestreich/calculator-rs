@@ -1,4 +1,5 @@
-use calcinum::{CalculatorError, Formatting};
+use crate::formatting::{FormatSpec, Formatter};
+use calcinum::{CalculatorError, Number};
 use std::{iter, str::Chars};
 
 #[derive(Default, Debug)]
@@ -33,45 +34,15 @@ impl Context {
     pub fn parse_and_eval(&mut self, expression: &str) {
         let mut output = String::new();
         let mut iter = expression.chars().peekable();
-        let mut separator = String::new();
-        let mut group_by = 0;
+        let mut specifier = String::new();
 
         while let Some(c) = iter.next() {
             match c {
                 ':' => {
-                    if let Some(cc) = iter.peek()
-                        && *cc == 'b'
-                    {
-                        iter.next();
-                        while let Some(cc) = iter.next() {
-                            if cc.is_ascii_digit() {
-                                // If we see a number, read everything until end of string
-                                let mut digits = String::from(cc);
-                                for n in iter.by_ref() {
-                                    if !n.is_ascii_digit() {
-                                        continue;
-                                    }
-                                    digits.push(n);
-                                }
-
-                                // Parse read digit into `usize`.
-                                if let Ok(nd) = digits.parse::<usize>() {
-                                    group_by = nd;
-                                } else {
-                                    println_red!(
-                                        "Error while parsing formatting. Invalid group_by number : '{digits}'"
-                                    );
-                                    self.push_history(expression, None);
-                                    return;
-                                }
-
-                                // Break - the group_by number should be the last thing on the line.
-                                break;
-                            }
-
-                            // Not a digit, use this char as separator.
-                            separator.push(cc);
-                        }
+                    // Once we see the formatting delimeter, it is safe
+                    // to assume we can read the rest of the line as formatting syntax.
+                    for fs in iter.by_ref() {
+                        specifier.push(fs);
                     }
                 }
                 '@' => {
@@ -101,26 +72,21 @@ impl Context {
             }
         }
 
-        let separator = if separator.is_empty() {
-            None
-        } else {
-            Some(separator.as_str())
-        };
-        self.eval(&output, separator, group_by);
+        self.eval(&output, &specifier);
     }
 
-    fn eval(&mut self, expression: &str, bin_fmt_separator: Option<&str>, bin_fmt_grouping: usize) {
+    /// `expression` is the 'infix' expression, `specifier` is the format specifier string.
+    fn eval(&mut self, expression: &str, specifier: &str) {
         match calcinum::eval(expression) {
             Ok(r) => {
-                println_green!("{r}");
-                if let Some(sep) = bin_fmt_separator {
-                    let n = r.format(Formatting::Binary {
-                        separator: sep.to_string(),
-                        group_by: bin_fmt_grouping,
-                    });
-                    println_green!("{n}");
-                }
                 self.push_history(expression, Some(r.to_string()));
+                if specifier.is_empty() {
+                    // No  formatting was used.
+                    println_green!("{r}");
+                } else {
+                    // Formatting was used.
+                    self.format_number_and_print(&r, specifier);
+                }
             }
             Err(e) => {
                 let nl = if expression.is_empty() { "" } else { "\n" };
@@ -172,5 +138,15 @@ impl Context {
 
     fn push_history(&mut self, expression: &str, result: Option<String>) {
         self.history.push((expression.to_string(), result));
+    }
+
+    fn format_number_and_print(&self, number: &Number, spec: &str) {
+        match FormatSpec::parse(spec) {
+            Ok(parsed_spec) => match Formatter::format_number(number, parsed_spec) {
+                Ok(formatted) => println_green!("{formatted}"),
+                Err(e) => println_yellow!("Invalid format specifier '{spec}' : {e:?}"),
+            },
+            Err(e) => println_yellow!("Invalid format specifier '{spec}' : {e:?}"),
+        }
     }
 }

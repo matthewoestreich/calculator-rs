@@ -1,6 +1,7 @@
 #[macro_use]
 mod macros;
 mod context;
+mod formatting;
 
 use context::Context;
 use rustyline::DefaultEditor;

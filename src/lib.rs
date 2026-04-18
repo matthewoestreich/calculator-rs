@@ -1,33 +1,66 @@
 //! `calcinum` is an expression evaluator and arbitrary-precision numeric system supporting
-//! integers, decimals, and binary-aware arithmetic. In addition to a CLI, it provides both a
-//! high-level calculator interface and a low-level Number type for direct manipulation.
+//! integers, decimals, and binary-aware arithmetic.
+//!
+//! It provides:
+
+//! - [`calcinum::eval`](crate::eval)
+//!   Evaluate expressions directly
+//!
+//! - [`calcinum::Number`](crate::Number)
+//!   Work with arbitrary numeric values
+//!
+//! - [`calcinum::Calculator`](crate::Calculator)
+//!   Stateful calculator-style interface
 //!
 //! # Important Info
 //!
-//! - Please see [here for more info on order of operations](#operators)
-//! - We use `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
-//! - Arithmetic operators (`+`, `-` <sub>(subtraction)</sub>, `*`, `/`, `%`, `**`, `-` <sub>(negation)</sub>) preserve decimal values.
+//! - Uses `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
+//! - Arithmetic operators preserve decimal values.
 //!   - `0.1 + 0.2 = 0.3`
 //!   - `2 - 1.1 = 0.9`
 //!   - `1 / 2 = 0.5`
-//! - Bitwise operators (`&`, `|`, `^`, `<<`, `>>`, `!`) operate on integers. **Operands are coerced into integers before the operation.**
+//! - Bitwise operators operate on integers.
+//!   - **Operands are coerced into integers before the operation.**
 //!   - `2.2 << 2 = 8` (coerced into `2 << 2`)
 //!
-//! # Getting Started
-//!
-//! - [`calcinum::eval`](crate::eval) : Evaluates expressions while correctly handling operator precedence without any bells or whistles
-//! - [`calcinum::Number`](crate::Number) : Work with arbitrary numeric values with support for arithmetic, bitwise operations, and more
-//! - [`calcinum::Calculator`](crate::Calculator) : Traditional calculator behavior - simulate pressing buttons or entering expressions - it evaluates expressions while correctly handling operator precedence
+//! See [operations](#operators) for a full order of operations list.
 //!
 //! # CLI
 //!
 //! | Argument         | Shorthand | Description                                                                                                                             |
 //! | ---------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-//! |                  |           | Provide no arguments to enter [shell mode](#shell-mode)                                                                                 |
-//! | `'<expression>'` |           | Provide an expression enclosed in quotes (**single quotes recommended**) for instant evaluation - used in [command mode](#command-mode) |
-//! | `--version`      | `-v`      | Display current version - used in [command mode](#command-mode)                                                                         |
+//! |  *(none)*        |           | Enter [shell mode](#shell-mode)                                                                                 |
+//! | `'<expression>'` |          | Evaluate expression ([command mode](#command-mode)) |
+//! | `--version`      | `-v`     | Print version |                                                                      |
 //!
-//! ## Operators
+//! ## Command Mode
+//!
+//! ```shell
+//! $ calcinum --version
+//! x.x.x
+//! $ calcinum -v
+//! x.x.x
+//! $ calcinum '2 + 2'
+//! 4
+//! $ calcinum '2 + (10 / 5)'
+//! 4
+//! $ calcinum 'abs(-10)'
+//! 10
+//! $ calcinum '!abs(-10)'
+//! -11
+//! ```
+//!
+//! ## Shell Mode
+//!
+//! Run with no arguments.
+//!
+//! ```shell
+//! $ calcinum
+//! ```
+//!
+//! <img width="518" height="853" alt="calcinum_demo" src="https://github.com/user-attachments/assets/d9823c27-37ae-4027-a9cd-a47446bd805d" />
+//!
+//! # Operators
 //!
 //! Order of operations.
 //!
@@ -47,117 +80,95 @@
 //! | `^`      | Bitwise XOR    | 2           | Binary | Left          |
 //! | `\|`     | Bitwise OR     | 1 (lowest)  | Binary | Left          |
 //!
-//! ## Functions
+//! # Functions
 //!
-//! You can provide functions within an expression. To call a function, type the function name, followed by an open parentheses, then the expression you'd like to evaluate, and finally a closing parentheses.
+//! Functions are called using standard syntax:
 //!
-//! For example: `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
+//! `abs(1 + ceil(100 / 33) - (12 + 13)) / 2`
 //!
-//! | Function | Definition                                                                                                                                                                             |
-//! | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-//! | `abs`    | Non-negative distance of a number from zero.                                                                                                                                           |
-//! | `floor`  | Greatest integer less than or equal to a given number.                                                                                                                                 |
-//! | `ceil`   | Smallest integer greater than or equal to a given number.                                                                                                                              |
-//! | `sin`    | Sine function. Computes the unit-circle y-coordinate for a given angle in radians.                                                                                                     |
-//! | `cos`    | Cosine function. Computes the unit-circle x-coordinate for a given angle in radians.                                                                                                   |
-//! | `tan`    | Tangent function. Computes the unit-circle y/x ratio for a given angle in radians.                                                                                                     |
-//! | `round`  | Rounds a number to the nearest integer value (0 decimal places). If the value is equidistant between two integers, it is rounded toward the nearest even integer (half-even rounding). |
+//! | Function | Description |
+//! |----------|-------------|
+//! | `abs`    | Absolute value |
+//! | `floor`  | Round down |
+//! | `ceil`   | Round up |
+//! | `round`  | Half-even rounding |
+//! | `sin`    | Sine (radians) |
+//! | `cos`    | Cosine (radians) |
+//! | `tan`    | Tangent (radians) |
 //!
-//! ## Constants
+//! # Constants
 //!
-//! You can use constants within expressions. We simply replace the constant with its value.
+//! | Name | Description | Value |
+//! |------|-------------|-------|
+//! | `pi` | π constant  | `3.1415926535897932383` |
 //!
-//! | Constant | Definition                                                  | Value                   |
-//! | -------- | ----------------------------------------------------------- | ----------------------- |
-//! | `pi`     | Mathematical constant π (pi). Default precision is 64-bits. | `3.1415926535897932383` |
+//! # CLI Formatting
 //!
-//! ## Formatting
+//! The CLI supports inline format specifiers using the syntax:
 //!
-//! **For the CLI**, the formatting delimiter is a colon `:` and must be placed at the end of the line. Any expression to the right of the format delimiter will be treated as formatting syntax!
-//!
-//! | Output        | Syntax                      | Example                                                                  |
-//! | ------------- | --------------------------- | ------------------------------------------------------------------------ |
-//! | Binary string | `:b<separator><group by n>` | - `:b 4` -> `1001 1010 1110 0101` <br> - `:b_4` -> `1001_1010_1110_0101` |
-//!
-//! ## Command Mode
-//!
-//! Command mode operates as a standard CLI interface, accepting a command and writing its output to the terminal.
-//!
-//! ```shell
-//! $ calcinum --version
-//! x.x.x
-//! $ calcinum -v
-//! x.x.x
-//! $ calcinum '2 + 2'
-//! 4
-//! $ calcinum '2 + (10 / 5)'
-//! 4
-//! $ calcinum 'abs(-10)'
-//! 10
-//! $ calcinum '!abs(-10)'
-//! -11
+//! ```text
+//! :<spec>
 //! ```
 //!
-//! ## Shell Mode
+//! A format specifier controls how a value is displayed (base, padding,
+//! width, grouping, etc.).
 //!
-//! **To enter shell mode do not provide any arguments to the CLI**
+//! ## Grammar
 //!
-//! ```shell
-//! $ calcinum
+//! ```text
+//! :<zero_pad?> <width?> <kind> <group?>
 //! ```
 //!
-//! Shell mode behaves like a REPL. Previous results can be interpolated into new expressions using `@N`, where `N` denotes the line number of the referenced result.
+//! | Component   | Required | Description                                      |
+//! |-------------|----------|--------------------------------------------------|
+//! | `0`         | No       | Enable zero-padding (only applies if width set)  |
+//! | `width`     | No       | Minimum output width                             |
+//! | `kind`      | Yes      | Output format (`b`, `x`, etc.)                   |
+//! | `group`     | No       | Group digits in chunks of N                      |
 //!
-//! Shell mode comes with a few extra commands, just type `commands` to view them.
+//! ## Kinds
 //!
-//! <img width="552" height="803" alt="Screenshot 2026-04-10 at 7 38 53 PM" src="https://github.com/user-attachments/assets/5144295a-400f-432d-80cf-ccf8206c7fff" />
+//! Kinds are case sensitive.
 //!
-//! <details>
-//!   <summary>Click to view raw text of screenshot above</summary>
+//! | Kind | Description        |
+//! |------|--------------------|
+//! | `b`  | Binary             |
+//! | `x`  | Hex (lowercase)    |
+//! | `X`  | Hex (uppercase)    |
+//! | `B`  | Base64             |
 //!
-//! ```shell
-//! $ calcinum
+//! ## Examples
 //!
-//! Commands:
-//!
-//! clear         clears the screen
-//! reset         resets history
-//! exit          exits the repl
-//! history       prints available history
-//! commands      prints this message
-//!
-//! [@1]> 1+1
-//! 2
-//! [@2]> floor(112.134)
-//! 112
-//! [@3]> 3*3-(@1+10)
-//! -3
-//! [@4]> abs(@3)
-//! 3
-//! [@5]> @10+1
-//! Line '10' does not exist.
-//! [@6]> history
-//! @1
-//!   expression = '1+1'
-//!   result     = '2'
-//! @2
-//!   expression = 'floor(112.134)'
-//!   result     = '112'
-//! @3
-//!   expression = '3*3-(2+10)'
-//!   result     = '-3'
-//! @4
-//!   expression = 'abs(-3)'
-//!   result     = '3'
-//! @5
-//!   expression = '@10+1'
-//!   result     = 'ERROR'
-//! [@6]> reset
-//! --- HISTORY RESET ---
-//! [@1]>
+//! ```text
+//! 101 :b4       → 0110 0101
+//! 11110000 :b4  → 1010 1001 1000 0110 0111 0000
 //! ```
 //!
-//! </details>
+//! ## Grouping
+//!
+//! Grouping splits the output into chunks of N characters.
+//!
+//! If the output length is not a multiple of N, it is automatically left-padded
+//! with `0`s until it is.
+//!
+//! Grouping is then applied from left to right.
+//!
+//! ```text
+//! 11110000 :b4  → 1010 1001 1000 0110 0111 0000
+//! ```
+//!
+//! ## Notes
+//!
+//! - Grouping is applied after conversion and padding.
+//! - Grouping may introduce additional zero-padding.
+//! - `kind` is required whenever `:` is present.
+//! - Zero-padding (`0`) is ignored if no width is provided:
+//! - Grouping is applied **after** padding.
+//!
+//! ```text
+//! :0b → same as :b
+//! ```
+//!
 //!
 
 mod ast;

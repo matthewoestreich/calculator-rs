@@ -1,10 +1,6 @@
 use crate::{Number, number::hexchar::HexChar};
 use std::fmt;
 
-// ===========================================================================================
-// ========================== Number impl ====================================================
-// ===========================================================================================
-
 impl Number {
     /// Applies custom formatting logic.
     /// See [Formatting] for more information.
@@ -159,10 +155,6 @@ impl Number {
     }
 }
 
-// ===========================================================================================
-// ========================== fmt impls ======================================================
-// ===========================================================================================
-
 impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -231,11 +223,7 @@ impl fmt::UpperHex for Number {
     }
 }
 
-// ===========================================================================================
-// ========================== Formatting =====================================================
-// ===========================================================================================
-
-/// [`Number`] can contain arbitrarily sized numbers, so we cannot use the built-in formatting.
+/// Formatting for arbitrarily sized numbers.
 #[derive(Debug, Clone)]
 pub enum Formatting {
     /// How many digits to show after the decimal.
@@ -404,7 +392,7 @@ impl Formatting {
         result
     }
 
-    /// Finds the next multiple, `m`,  for an unsigned size, `n`.
+    /// Finds the next multiple, `m`, starting at `n`.
     /// If `n` is already a multiple of `m`, we return `n`.
     /// If `m` or `n` are 0, we return 0.
     fn next_pos_multiple_inclusive(m: usize, n: usize) -> usize {

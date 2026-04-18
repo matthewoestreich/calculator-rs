@@ -18,6 +18,12 @@ macro_rules! print_green {
     };
 }
 
+macro_rules! format_yellow {
+    ($($arg:tt)*) => {
+        format!("\x1b[93m{}\x1b[0m", format_args!($($arg)*))
+    };
+}
+
 macro_rules! print_cyan {
     ($($arg:tt)*) => {
         print!("\x1b[96m{}\x1b[0m", format_args!($($arg)*));

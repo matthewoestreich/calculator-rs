@@ -52,18 +52,20 @@ fn repl_mode() {
     // ADD YOUR COMMAND AND DESCRIPTION HERE SO IT
     // IS PRINTED TO CONSOLE SO USERS ARE AWARE OF IT!
     //
-    let commands = vec![
-        ("clear", "     clears the screen"),
-        ("commands", "  prints this message"),
-        ("constants", " prints available constants"),
-        ("exit", "      exits the repl"),
-        ("functions", " prints available functions"),
-        ("help", "      prints this message"),
-        ("history", "   prints available history"),
-        ("operators", " prints available operators"),
-        ("reset", "     resets history"),
+    let mut commands = vec![
+        ("clear", "clears the screen"),
+        ("commands", "prints this message"),
+        ("consts", "prints available constants"),
+        ("exit", "exits the repl"),
+        ("funcs", "prints available functions"),
+        ("help", "prints this message"),
+        ("history", "prints available history"),
+        ("ops", "prints available operators"),
+        ("reset", "resets history"),
     ];
 
+    commands.sort_by_key(|e| e.0);
+    println_green!("\n{}", env!("CARGO_PKG_NAME").to_uppercase());
     print_commands(&commands);
 
     loop {
@@ -78,13 +80,13 @@ fn repl_mode() {
                 //
                 let input = input.as_str();
                 match input {
-                    "clear" => clear_screen(),
+                    "clear" | "cls" => clear_screen(),
                     "reset" => global_reset(&mut ctx, &mut rl),
                     "history" => ctx.print_history(),
                     "help" | "commands" => print_commands(&commands),
-                    "functions" => print_available_functions(),
-                    "constants" => print_available_constants(),
-                    "operators" => print_available_operators(),
+                    "funcs" | "functions" => print_available_functions(),
+                    "consts" | "constants" => print_available_constants(),
+                    "ops" | "operators" => print_available_operators(),
                     "exit" => break,
                     // this needs to be last!
                     s => ctx.parse_and_eval(s),
@@ -94,24 +96,6 @@ fn repl_mode() {
             Err(_) => break,
         }
     }
-}
-
-/// Each tuple is : ("command_name", "command_description")
-fn print_commands(commands: &Vec<(&str, &str)>) {
-    println!("\nCommands:\n");
-
-    let dblat = format_cyan!("@@");
-    let atnum = format_cyan!("@n");
-    let n = format_cyan!("n");
-    println!("'{dblat}' references the result from previous expression");
-    println!("'{atnum}' references the result from line '{n}'");
-    println!();
-
-    for cmd in commands {
-        print_magenta!("{}", cmd.0);
-        println!("      {}", cmd.1);
-    }
-    println!();
 }
 
 fn clear_screen() {
@@ -158,4 +142,27 @@ fn print_available_constants() {
         if acc.is_empty() { g } else { f }
     });
     println!("  {str}");
+}
+
+/// Each tuple is : ("command_name", "command_description")
+fn print_commands(commands: &Vec<(&str, &str)>) {
+    let min_spaces = 4;
+    let longest_name = commands.iter().fold(0, |acc, (name, _)| {
+        let len = name.len();
+        if acc >= len { acc } else { len }
+    });
+    let dbl_at = format_cyan!("@@");
+    let at_num = format_cyan!("@n");
+    let n = format_cyan!("n");
+
+    println!();
+    for cmd in commands {
+        let spaces = " ".repeat((longest_name - cmd.0.len()) + min_spaces);
+        print_magenta!("{}", cmd.0);
+        println!("{spaces}{}", cmd.1);
+    }
+    println!();
+    println!("{dbl_at} : references the result from previous expression");
+    println!("{at_num} : references the result from line '{n}'");
+    println!();
 }

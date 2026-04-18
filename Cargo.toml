@@ -28,6 +28,7 @@ num-bigint = "0.4.6"
 num-traits = "0.2.19"
 regex = "1.12.3"
 rustyline = "18.0.0"
+varienum = { path = "./varienum/" }
 
 [dev-dependencies]
 rstest = "0.26.1"

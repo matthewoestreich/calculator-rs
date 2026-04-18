@@ -182,3 +182,31 @@ pub fn eval(expression: &str) -> Result<Number, CalculatorError> {
     let result = ast::eval(rpn_tokens)?;
     Ok(result)
 }
+
+/// This method returns a vec of
+/// available functions for use within the CLI.
+#[doc(hidden)]
+pub fn cli_functions() -> Vec<String> {
+    let mut all = vec![];
+    all.extend(ast::Function::variants_debug());
+    all
+}
+
+/// This method returns a vec of
+/// available operators for use within the CLI.
+#[doc(hidden)]
+pub fn cli_operators() -> Vec<String> {
+    let mut all = vec![];
+    all.extend(ast::Unary::variants_debug());
+    all.extend(ast::Binary::variants_debug());
+    all
+}
+
+/// This method returns a vec of
+/// available constants for use within the CLI.
+#[doc(hidden)]
+pub fn cli_constants() -> Vec<String> {
+    let mut all = vec![];
+    all.extend(ast::Constant::variants_debug());
+    all
+}

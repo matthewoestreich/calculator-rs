@@ -111,37 +111,43 @@ impl Formatter {
             _ => return Err(format!("unrecognized type '{}'", spec.kind)),
         };
 
-        let mut fmtd = String::new();
+        let mut group_pad = 0;
+        let mut width_pad = 0;
 
         if let Some(w) = spec.width {
-            let pad_by = w.saturating_sub(num_str.len());
-            let pad_char = if spec.zero_pad { '0' } else { ' ' };
-            for _ in 0..pad_by {
-                fmtd.push(pad_char);
-            }
+            width_pad += w.saturating_sub(num_str.len());
+        }
+        if let Some(group) = spec.group {
+            let min_len = num_str.len() + width_pad;
+            group_pad = Self::next_multiple(group, min_len) - min_len;
         }
 
-        // Must apply padding first! (need to pad start)
-        fmtd.push_str(&num_str);
+        let mut num_fmtd = String::with_capacity(width_pad + group_pad);
+        let pad_char = if spec.zero_pad { '0' } else { ' ' };
+
+        for _ in 0..width_pad {
+            num_fmtd.push(pad_char);
+        }
+        for _ in 0..group_pad {
+            num_fmtd.push('0');
+        }
+
+        // Now we have padding in our 'formatted' string,
+        // push our converted Number string into it.
+        num_fmtd.push_str(&num_str);
 
         if let Some(group) = spec.group {
-            // pad start to make groups even
-            let rem = Self::next_multiple(group, fmtd.len()) - fmtd.len();
-            let mut tmp = String::new();
-            for _ in 0..rem {
-                tmp.push('0');
-            }
-            tmp.push_str(&fmtd);
-            fmtd = String::new();
-            for (i, c) in tmp.chars().enumerate() {
+            let mut s = String::with_capacity(num_fmtd.len());
+            for (i, c) in num_fmtd.chars().enumerate() {
                 if i != 0 && i % group == 0 {
-                    fmtd.push(' ');
+                    s.push(' ');
                 }
-                fmtd.push(c);
+                s.push(c);
             }
+            num_fmtd = s;
         }
 
-        Ok(fmtd)
+        Ok(num_fmtd)
     }
 
     /// Finds the next multiple, `m`,  starting at `n`.

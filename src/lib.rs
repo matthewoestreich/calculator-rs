@@ -15,6 +15,9 @@
 //! # Important Info
 //!
 //! - Uses `C`/`Rust`-style operator precedence, with added support for exponentiation (`**`).
+//! - No implicit multiplication
+//! - Floating point operations can compound lossily. **No special efforts are made to guard against this kind of error**.
+//!   - `$ calcinum 'sin(rad(45)) - (sqrt(2) / 2)'` → `-0.0000000000000000000676424327732749209...`
 //! - Arithmetic operators preserve decimal values.
 //!   - `0.1 + 0.2 = 0.3`
 //!   - `2 - 1.1 = 0.9`

@@ -41,13 +41,13 @@ impl Number {
     ///
     /// let a = Number::from(12);
     /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
-    /// assert_eq!(Number::rad(&a, 64), Ok(expect));
+    /// assert_eq!(a.rad(64), Ok(expect));
     /// ```
-    pub fn rad(n: &Number, precision: usize) -> Result<Number, NumberError> {
+    pub fn rad(&self, precision: usize) -> Result<Number, NumberError> {
         ASTRO_CONSTS.with(|cc| {
             let mut ctx = cc.borrow_mut();
 
-            let bf = match n {
+            let bf = match self {
                 Number::Int(i) => {
                     let deg = i.to_string().parse::<BigFloat>()?;
                     let pi = ctx.pi(precision, AstroRoundingMode::None);
@@ -90,7 +90,7 @@ impl Number {
     /// assert_eq!(a, expect);
     /// ```
     pub fn rad_assign(&mut self, precision: usize) -> Result<(), NumberError> {
-        *self = Number::rad(self, precision)?;
+        *self = self.rad(precision)?;
         Ok(())
     }
 
@@ -944,7 +944,7 @@ mod test {
     fn deg_to_rad(#[case] number: &str, #[case] expect: &str) {
         let n = number.parse::<Number>().expect("Number");
         let e = expect.parse::<Number>().expect("Number");
-        let r = Number::rad(&n, 64).expect("radians");
+        let r = n.rad(64).expect("radians");
         assert_eq!(e, r, "got rad '{r}' expected rad '{e}'");
     }
 }

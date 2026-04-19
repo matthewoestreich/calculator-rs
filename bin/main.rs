@@ -76,10 +76,14 @@ fn repl_mode() {
 
         match line {
             Ok(input) => {
+                let input = input.as_str();
+                if input.is_empty() {
+                    continue;
+                }
+
                 //
                 // ADD YOUR COMMAND'S "HANDLER" HERE!
                 //
-                let input = input.as_str();
                 match input {
                     "clear" | "cls" => clear_screen(),
                     "reset" => global_reset(&mut ctx, &mut rl),
@@ -89,8 +93,6 @@ fn repl_mode() {
                     "consts" | "constants" => print_available_constants(),
                     "ops" | "operators" => print_available_operators(),
                     "exit" => break,
-                    // do nothing if empty string
-                    s if s.is_empty() => {}
                     // this needs to be last!
                     s => ctx.parse_and_eval(s),
                 };

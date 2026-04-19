@@ -89,6 +89,8 @@ fn repl_mode() {
                     "consts" | "constants" => print_available_constants(),
                     "ops" | "operators" => print_available_operators(),
                     "exit" => break,
+                    // do nothing if empty string
+                    s if s.is_empty() => {}
                     // this needs to be last!
                     s => ctx.parse_and_eval(s),
                 };

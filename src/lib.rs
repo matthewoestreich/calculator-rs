@@ -96,6 +96,7 @@
 //! | `cos`    | Cosine (radians) |
 //! | `tan`    | Tangent (radians) |
 //! | `sinh`   | Hyperbolic sine function |
+//! | `cosh`   | Hyperbolic cosine function |
 //!
 //! # Constants
 //!

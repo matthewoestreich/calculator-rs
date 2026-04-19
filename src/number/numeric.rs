@@ -476,6 +476,58 @@ impl Number {
         })
     }
 
+    /// Hyperbolic cosine function. Computes the hyperbolic x-coordinate defined by
+    ///  (e^x + e^{-x}) / 2 for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = "3.14".parse::<Number>().expect("Number::Decimal");
+    /// let expect = "11.5735748283120743437885099279346581326".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.cosh(), Ok(expect));
+    /// ```
+    pub fn cosh(&self) -> Result<Number, NumberError> {
+        match self {
+            Number::Int(i) => Self::cosh_str(&i.to_string()),
+            Number::Decimal(d) => Self::cosh_str(&d.to_plain_string()),
+        }
+    }
+
+    /// Same as [`cosh`](crate::Number#method.cosh), but with `self` assignment.
+    ///
+    /// Hyperbolic cosine function. Computes the hyperbolic x-coordinate defined by
+    ///  (e^x + e^{-x}) / 2 for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = "3.14".parse::<Number>().expect("Number::Decimal");
+    /// let _possible_error = a.cosh_assign();
+    /// let expect = "11.5735748283120743437885099279346581326".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn cosh_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.cosh()?;
+        Ok(())
+    }
+
+    /// Please see comments on `cosh` method.
+    fn cosh_str(s: &str) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64).max(96);
+            let cosh_bf = og_bf.cosh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = cosh_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
+        })
+    }
+
     /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
@@ -726,5 +778,23 @@ mod test {
         let e = expect.parse::<Number>().expect("Number");
         let r = n.sinh().expect("sinh");
         assert_eq!(e, r, "got sinh '{r}' expected sinh '{e}'");
+    }
+
+    #[rstest]
+    #[case::cosh1("0", "1.0")]
+    #[case::cosh2("0.5", "1.12762596520638078522622516140267201255")]
+    #[case::cosh3("1", "1.5430806348152437784779056207570616826")]
+    #[case::cosh4("-1", "1.5430806348152437784779056207570616826")]
+    #[case::cosh5("2", "3.76219569108363145956221347777374610829")]
+    #[case::cosh6("-2", "3.76219569108363145956221347777374610829")]
+    #[case::cosh7("3.14", "11.5735748283120743437885099279346581326")]
+    #[case::cosh8("-3.14", "11.5735748283120743437885099279346581326")]
+    #[case::cosh9("50", "2592352764293536232043.72666146674269241")]
+    #[case::cosh10("-50", "2592352764293536232043.72666146674269241")]
+    fn cosh(#[case] number: &str, #[case] expect: &str) {
+        let n = number.parse::<Number>().expect("Number");
+        let e = expect.parse::<Number>().expect("Number");
+        let r = n.cosh().expect("cosh");
+        assert_eq!(e, r, "got cosh '{r}' expected cosh '{e}'");
     }
 }

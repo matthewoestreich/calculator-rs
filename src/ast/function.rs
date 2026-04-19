@@ -22,6 +22,7 @@ pub enum Function {
     Round,
     Sinh,
     Cosh,
+    Tanh,
 }
 
 impl FromStr for Function {
@@ -38,6 +39,7 @@ impl FromStr for Function {
             "round" => Self::Round,
             "sinh" => Self::Sinh,
             "cosh" => Self::Cosh,
+            "tanh" => Self::Tanh,
             _ => {
                 return Err(ParserError::UnrecognizedFunction {
                     name: s.to_string(),
@@ -62,6 +64,7 @@ impl fmt::Display for Function {
             Function::Round => write!(f, "round"),
             Function::Sinh => write!(f, "sinh"),
             Function::Cosh => write!(f, "cosh"),
+            Function::Tanh => write!(f, "tanh"),
         }
     }
 }

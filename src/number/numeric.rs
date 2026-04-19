@@ -528,6 +528,58 @@ impl Number {
         })
     }
 
+    /// Hyperbolic tangent function. Computes the ratio of hyperbolic sine to hyperbolic
+    /// cosine, defined as sinh(x) / cosh(x), for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = "3.14".parse::<Number>().expect("Number::Decimal");
+    /// let expect = "0.99626020494583190099".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a.tanh(), Ok(expect));
+    /// ```
+    pub fn tanh(&self) -> Result<Number, NumberError> {
+        match self {
+            Number::Int(i) => Self::tanh_str(&i.to_string()),
+            Number::Decimal(d) => Self::tanh_str(&d.to_plain_string()),
+        }
+    }
+
+    /// Same as [`tanh`](crate::Number#method.tanh), but with `self` assignment.
+    ///
+    /// Hyperbolic tangent function. Computes the ratio of hyperbolic sine to
+    /// hyperbolic cosine, defined as sinh(x) / cosh(x), for a given input.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = "3.14".parse::<Number>().expect("Number::Decimal");
+    /// let _possible_error = a.tanh_assign();
+    /// let expect = "0.99626020494583190099".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn tanh_assign(&mut self) -> Result<(), NumberError> {
+        *self = self.tanh()?;
+        Ok(())
+    }
+
+    /// Please see comments on `tanh` method.
+    fn tanh_str(s: &str) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let og_bf = s.to_string().parse::<BigFloat>()?;
+            let prec = og_bf.precision().unwrap_or(64);
+            let tanh_bf = og_bf.tanh(prec, AstroRoundingMode::None, &mut cc.borrow_mut());
+            let result = tanh_bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(result))
+        })
+    }
+
     /// Return `self` rounded to ‘round_digits’ precision after the decimal point.
     /// Rounding mode is half even; round to ‘nearest neighbor’, if equidistant, round
     /// towards nearest even digit.
@@ -796,5 +848,23 @@ mod test {
         let e = expect.parse::<Number>().expect("Number");
         let r = n.cosh().expect("cosh");
         assert_eq!(e, r, "got cosh '{r}' expected cosh '{e}'");
+    }
+
+    #[rstest]
+    #[case::tanh1("0", "0.0")]
+    #[case::tanh2("0.5", "0.46211715726000975849")]
+    #[case::tanh3("1", "0.76159415595576488811")]
+    #[case::tanh4("-1", "-0.76159415595576488811")]
+    #[case::tanh5("2", "0.9640275800758168839")]
+    #[case::tanh6("-2", "-0.9640275800758168839")]
+    #[case::tanh7("3.14", "0.99626020494583190099")]
+    #[case::tanh8("-3.14", "-0.99626020494583190099")]
+    #[case::tanh9("50", "1.0")]
+    #[case::tanh10("-50", "-1.0")]
+    fn tanh(#[case] number: &str, #[case] expect: &str) {
+        let n = number.parse::<Number>().expect("Number");
+        let e = expect.parse::<Number>().expect("Number");
+        let r = n.tanh().expect("tanh");
+        assert_eq!(e, r, "got tanh '{r}' expected tanh '{e}'");
     }
 }

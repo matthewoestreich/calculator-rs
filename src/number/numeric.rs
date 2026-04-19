@@ -30,6 +30,70 @@ impl Number {
         })
     }
 
+    /// Radians conversion function. Converts an angle from degrees to radians,
+    /// where one full rotation equals 2π radians.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = Number::from(12);
+    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(Number::rad(&a, 64), Ok(expect));
+    /// ```
+    pub fn rad(n: &Number, precision: usize) -> Result<Number, NumberError> {
+        ASTRO_CONSTS.with(|cc| {
+            let mut ctx = cc.borrow_mut();
+
+            let bf = match n {
+                Number::Int(i) => {
+                    let deg = i.to_string().parse::<BigFloat>()?;
+                    let pi = ctx.pi(precision, AstroRoundingMode::None);
+                    deg.mul(
+                        &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
+                        precision,
+                        AstroRoundingMode::None,
+                    )
+                }
+                Number::Decimal(d) => {
+                    let deg = d.to_string().parse::<BigFloat>()?;
+                    let pi = ctx.pi(precision, AstroRoundingMode::None);
+                    deg.mul(
+                        &(pi.div(&BigFloat::from(180), precision, AstroRoundingMode::None)),
+                        precision,
+                        AstroRoundingMode::None,
+                    )
+                }
+            };
+
+            let bd = bf.to_string().parse::<BigDecimal>()?;
+            Ok(Number::Decimal(bd))
+        })
+    }
+
+    /// Same as [`rad`](crate::Number#method.abs), but with `self` assignment.
+    ///
+    /// Radians conversion function. Converts an angle from degrees to radians,
+    /// where one full rotation equals 2π radians.
+    ///
+    /// We attempt to retain native precision during calculations. If `self` is considered
+    /// `NaN` or `Infinity`, we fall back to using 64-bits of precision.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let mut a = Number::from(12);
+    /// let _possible_error = a.rad_assign(64);
+    /// let expect = "0.2094395102393195492".parse::<Number>().expect("Number::Decimal");
+    /// assert_eq!(a, expect);
+    /// ```
+    pub fn rad_assign(&mut self, precision: usize) -> Result<(), NumberError> {
+        *self = Number::rad(self, precision)?;
+        Ok(())
+    }
+
     /// Get raw digit count, excluding `-` or `.` symbols.
     ///
     /// ```rust
@@ -866,5 +930,21 @@ mod test {
         let e = expect.parse::<Number>().expect("Number");
         let r = n.tanh().expect("tanh");
         assert_eq!(e, r, "got tanh '{r}' expected tanh '{e}'");
+    }
+
+    #[rstest]
+    #[case::deg_to_rad("12", "0.2094395102393195492")]
+    #[case::deg_to_rad2("348", "6.073745796940266927")]
+    #[case::deg_to_rad3("-67", "-1.1693705988362008164")]
+    #[case::deg_to_rad4("-67.83774", "-1.1839919201118581129")]
+    #[case::deg_to_rad5("-0", "0.0")]
+    #[case::deg_to_rad6("361145983", "6303186.4837014686541")]
+    #[case::deg_to_rad7("361145983.342101", "6303186.4896722574781")]
+    #[case::deg_to_rad8("-361145983.342101", "-6303186.4896722574781")]
+    fn deg_to_rad(#[case] number: &str, #[case] expect: &str) {
+        let n = number.parse::<Number>().expect("Number");
+        let e = expect.parse::<Number>().expect("Number");
+        let r = Number::rad(&n, 64).expect("radians");
+        assert_eq!(e, r, "got rad '{r}' expected rad '{e}'");
     }
 }

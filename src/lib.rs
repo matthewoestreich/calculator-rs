@@ -98,6 +98,7 @@
 //! | `sinh`   | Hyperbolic sine function |
 //! | `cosh`   | Hyperbolic cosine function |
 //! | `tanh`   | Hyperbolic tangent function |
+//! | `rad`    | Radians conversion function |
 //!
 //! # Constants
 //!

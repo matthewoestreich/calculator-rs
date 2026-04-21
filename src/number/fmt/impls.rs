@@ -260,7 +260,6 @@ mod test {
     use rstest::*;
 
     #[rstest]
-    #[ignore]
     #[case::formatting_binary1(
         "-12345.6789",
         true,

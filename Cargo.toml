@@ -1,6 +1,6 @@
 [package]
 name = "calcinum"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2024"
 authors = ["Matt Oestreich"]
 description = "Calculator capable of handling arbitrarily large numbers"

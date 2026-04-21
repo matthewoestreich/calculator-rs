@@ -166,9 +166,7 @@ fn print_formatting_info() {
 
     println!("  Available formatting kinds:");
     println!("   {kinds_str}");
-    println!(
-        "  For detailed syntax guide : https://docs.rs/calcinum/latest/calcinum/#cli-formatting"
-    );
+    println!("  For detailed syntax guide : https://docs.rs/calcinum/latest/calcinum/#formatting");
 }
 
 /// Each tuple is : ("command_name", "command_description")

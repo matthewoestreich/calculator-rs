@@ -122,6 +122,7 @@
 //! Instead of prefixing with `:`, the spec is passed directly as a string:
 //!
 //! ```rust
+//! use calcinum::Number;
 //! let n = Number::from(1);
 //! let formatted = n.format("036b4");
 //! ```

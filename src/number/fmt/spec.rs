@@ -231,21 +231,19 @@ pub struct Formatter;
 
 impl Formatter {
     pub fn format_number(number: &Number, spec: FormatSpec) -> Result<String, String> {
-        match spec.kind {
-            Kind::Number => Ok(number.to_string().parse::<Number>()?.to_string()),
-            Kind::Binary => Ok(Self::fmt_binary(&number.to_binary_str(), &spec)),
-            Kind::HexadecimalLower => Ok(Self::fmt_hex(&number.to_hexadecimal_str(false), &spec)),
-            Kind::HexadecimalUpper => Ok(Self::fmt_hex(&number.to_hexadecimal_str(true), &spec)),
-            Kind::Base64 => Ok(number.to_base64_str()),
-            Kind::Null => Err(format!("unrecognized type '{:?}'", spec.kind)),
-        }
+        Ok(match spec.kind {
+            Kind::Number => number.to_string().parse::<Number>()?.to_string(),
+            Kind::Binary => Self::fmt_radix(&number.to_binary_str(), &spec),
+            Kind::HexadecimalLower => Self::fmt_radix(&number.to_hexadecimal_str(false), &spec),
+            Kind::HexadecimalUpper => Self::fmt_radix(&number.to_hexadecimal_str(true), &spec),
+            Kind::Base64 => number.to_base64_str(),
+            Kind::Null => return Err(format!("unrecognized type '{:?}'", spec.kind)),
+        })
     }
 
-    fn fmt_hex(hex_str: &str, spec: &FormatSpec) -> String {
-        Self::fmt_binary(hex_str, spec)
-    }
-
-    fn fmt_binary(num_str: &str, spec: &FormatSpec) -> String {
+    /// This method formats per the spec.
+    /// While you can use it on an encoded base64 string, it would affect the decoded value.
+    fn fmt_radix(num_str: &str, spec: &FormatSpec) -> String {
         let (sign, s) = match num_str.strip_prefix('-') {
             Some(rest) => ("-", rest),
             None => ("", num_str),
@@ -255,27 +253,20 @@ impl Formatter {
         let group = spec.group.unwrap_or(0);
         let pad_char = if spec.zero_pad { "0" } else { " " };
         let (lhs, rhs) = s.split_once('.').unwrap_or((s, ""));
-
-        let mut lhs_out = String::new();
-        let mut rhs_out = String::new();
-
         let total_len = lhs.len() + rhs.len();
         let target_width = width.max(total_len);
-        let mut pad = target_width.saturating_sub(total_len);
 
-        if group > 0 {
-            let rhs_fmtd_len = Self::next_multiple(group, rhs.len());
-            let lhs_fmtd_len = Self::next_multiple(group, lhs.len());
-            let total_fmt_len = lhs_fmtd_len + rhs_fmtd_len;
-            pad = target_width.saturating_sub(total_fmt_len);
-            let expected_output_len = pad + lhs.len() + rhs_fmtd_len;
-            let extra_pad = target_width.saturating_sub(expected_output_len);
-            pad += extra_pad;
-        }
+        let pad = if group > 0 {
+            let rhs_fmt = Self::next_multiple(group, rhs.len());
+            // enforce: pad + lhs.len() + rhs_fmt == target
+            target_width.saturating_sub(lhs.len() + rhs_fmt)
+        } else {
+            target_width.saturating_sub(total_len)
+        };
 
-        lhs_out.push_str(&pad_char.repeat(pad));
+        let mut lhs_out = pad_char.repeat(pad);
+        let mut rhs_out = rhs.to_string();
         lhs_out.push_str(lhs);
-        rhs_out.push_str(rhs);
 
         if group > 0 {
             lhs_out = Self::group_by(&lhs_out, group);
@@ -293,7 +284,6 @@ impl Formatter {
     }
 
     fn group_by(s: &str, n: usize) -> String {
-        println!("  [group_by] s.len= '{}' | n= '{n}'", s.len());
         let total = Self::next_multiple(n, s.len());
         let pad = total - s.len();
         let sbytes = s.as_bytes();

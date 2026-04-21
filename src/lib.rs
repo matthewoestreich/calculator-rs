@@ -111,7 +111,39 @@
 //! | `pi` | π constant  | `3.1415926535897932383` |
 //! | `e`  | Euler’s number | `2.7182818284590452352` |
 //!
-//! # CLI Formatting
+//! # Formatting
+//!
+//! Both the CLI and library use the same formatting spec.
+//!
+//! ## Library Usage
+//!
+//! The same formatting specifier used by the CLI is also supported in the library.
+//!
+//! Instead of prefixing with `:`, the spec is passed directly as a string:
+//!
+//! ```rust
+//! let n = Number::from(1);
+//! let formatted = n.format("036b4");
+//! ```
+//!
+//! This is equivalent to the CLI usage:
+//!
+//! ```text
+//! 1 :036b4
+//! ```
+//!
+//! ### Notes
+//!
+//! - The format string follows the exact same grammar:
+//!
+//! ```text
+//! <zero_pad?> <width?> <kind> <group?>
+//! ```
+//!
+//! - The leading `:` is **only required in CLI input**, not in the library API.
+//! - All semantics (width, padding, grouping, etc.) are identical between CLI and library usage.
+//!
+//! ## CLI Usage
 //!
 //! The CLI supports inline format specifiers using the syntax:
 //!
@@ -122,7 +154,7 @@
 //! A format specifier controls how a value is displayed (base, padding,
 //! width, grouping, etc.).
 //!
-//! ## Grammar
+//! ### Grammar
 //!
 //! ```text
 //! :<zero_pad?> <width?> <kind> <group?>
@@ -131,15 +163,15 @@
 //! | Component   | Required | Description                                      |
 //! |-------------|----------|--------------------------------------------------|
 //! | `0`         | No       | Enable zero-padding (only applies if width set)  |
-//! | `width`     | No       | Minimum output width                             |
+//! | `width`     | No       | Minimum total digit width (excludes `-` and `.`) |
 //! | `kind`      | Yes      | Output format (`b`, `x`, etc.)                   |
 //! | `group`     | No       | Group digits in chunks of N                      |
 //!
-//! ## Kinds
+//! ### Kinds
 //!
 //! Kinds are case sensitive.
 //!
-//! **Note:** if `d` kind is specified everything else is ignored.
+//! **Note:** if `N` kind is specified everything else is ignored.
 //!
 //! | Kind | Description        |
 //! |------|--------------------|
@@ -149,38 +181,49 @@
 //! | `B`  | Base64             |
 //! | `N`  | `Number`           |
 //!
-//! ## Examples
+//! ### Width & Padding
+//!
+//! - When used with `group`, `width` specifies the **minimum total number of digits** in the output
+//!   (excluding sign and decimal point).
+//! - If the value has fewer digits than `width`, it is padded on the **left side
+//!   of the integer portion**.
+//! - The fractional portion is never padded due to width alone.
 //!
 //! ```text
-//! 101 :b4       → 0110 0101
-//! 11110000 :b4  → 1010 1001 1000 0110 0111 0000
+//! 123.123 :024b
+//! → 00000000001111011.1111011
+//!
+//! 123.123 :024b4
+//! → 0000 0000 0111 1011.0111 1011
 //! ```
 //!
-//! ## Grouping
+//! ### Grouping
 //!
-//! Grouping splits the output into chunks of N characters.
+//! Grouping splits digits into chunks of size `N`.
 //!
-//! If the output length is not a multiple of N, it is automatically left-padded
-//! with `0`s until it is.
-//!
-//! Grouping is then applied from left to right.
+//! - Grouping is applied **after padding**.
+//! - Grouping operates on a **group-aligned representation**, meaning:
+//!   - The integer and fractional parts are each aligned to a multiple of `N`.
+//!   - This alignment may introduce additional leading zeros on the integer side.
+//!   - The fractional side is only expanded to satisfy grouping alignment,
+//!     not width.
 //!
 //! ```text
-//! 11110000 :b4  → 1010 1001 1000 0110 0111 0000
+//! 123.123 :024b4
+//! → 0000 0000 0111 1011.0111 1011
 //! ```
 //!
-//! ## Notes
+//! ### Notes
 //!
-//! - Grouping is applied after conversion and padding.
-//! - Grouping may introduce additional zero-padding.
 //! - `kind` is required whenever `:` is present.
 //! - Zero-padding (`0`) is ignored if no width is provided:
-//! - Grouping is applied **after** padding.
 //!
 //! ```text
 //! :0b → same as :b
 //! ```
 //!
+//! - Grouping does **not** change the numeric value.
+//! - When used with `group`, `width` is treated as a **minimum**, not an exact size.
 //!
 
 mod ast;

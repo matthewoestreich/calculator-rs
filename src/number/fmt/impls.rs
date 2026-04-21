@@ -9,7 +9,7 @@ use std::fmt;
 
 impl Number {
     /// Applies custom formatting logic.
-    /// See [`Formatting`](crate#cli-formatting) for more examples.
+    /// See [`Formatting`](crate#formatting) for more examples.
     ///
     /// If you provide an invalid format string, we just return `self` as a `String`
     /// without any formatting.

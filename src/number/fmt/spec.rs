@@ -263,51 +263,21 @@ impl Formatter {
         let target_width = width.max(total_len);
         let mut pad = target_width.saturating_sub(total_len);
 
-        // input=1111011.1111011 w=32 g=4
-        // -> 0000 0000 0000 0000 0111 11011 . 0111 11011
-
         if group > 0 {
-            // Find how many chars rhs will be -
-            // we need to sub that amount from pad.
             let rhs_fmtd_len = Self::next_multiple(group, rhs.len());
             let lhs_fmtd_len = Self::next_multiple(group, lhs.len());
-            let total_fmt_len = lhs_fmtd_len + rhs_fmtd_len; // 16
+            let total_fmt_len = lhs_fmtd_len + rhs_fmtd_len;
             pad = target_width.saturating_sub(total_fmt_len);
             let expected_output_len = pad + lhs.len() + rhs_fmtd_len;
-            println!("expected_output_len= '{expected_output_len}'");
             let extra_pad = target_width.saturating_sub(expected_output_len);
             pad += extra_pad;
-            println!(
-                "\ntarget_width= '{target_width}'\nlhs_fmtd_len= '{lhs_fmtd_len}'\nrhs_fmtd_len= '{rhs_fmtd_len}'\ntotal_len= '{total_len}'\npad= '{pad}'\ntotal_fmt_len= '{total_fmt_len}'\n"
-            );
         }
 
         lhs_out.push_str(&pad_char.repeat(pad));
-        /*
-        if width > total_len {
-            if rhs.is_empty() {
-                lhs_out.push_str(&pad_char.repeat(width - lhs.len()));
-            } else {
-                let half = width / 2;
-                println!(
-                    "lhs.len= '{}' | rhs.len= '{}' | width= '{width}' | half_width= '{half}' | groupby= '{group}'",
-                    lhs.len(),
-                    rhs.len()
-                );
-                lhs_out.push_str(&pad_char.repeat(half.saturating_sub(lhs.len())));
-                rhs_out.push_str(&pad_char.repeat(half.saturating_sub(rhs.len())));
-            }
-        }
-        */
-
         lhs_out.push_str(lhs);
         rhs_out.push_str(rhs);
 
         if group > 0 {
-            println!(
-                "lhs -> group_by -> s.len (lhs_out.len) = '{}' | n (group)= '{group}'",
-                lhs_out.len()
-            );
             lhs_out = Self::group_by(&lhs_out, group);
             if !rhs.is_empty() {
                 rhs_out = Self::group_by(&rhs_out, group);

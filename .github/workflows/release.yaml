@@ -34,32 +34,20 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      # ----------------------------
-      # Build
-      # ----------------------------
       - name: Build release binary
         run: cargo build --release --target ${{ matrix.target }}
 
-      # ----------------------------
-      # Strip (unix only)
-      # ----------------------------
       - name: Strip binary (unix)
         if: runner.os != 'Windows'
         run: |
           strip target/${{ matrix.target }}/release/* || true
 
-      # ----------------------------
-      # Extract binary name safely
-      # ----------------------------
       - name: Get binary name
         id: bin
         shell: bash
         run: |
           echo "name=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].name')" >> $GITHUB_OUTPUT
 
-      # ----------------------------
-      # Prepare artifact
-      # ----------------------------
       - name: Prepare artifact
         shell: bash
         run: |
@@ -68,29 +56,25 @@ jobs:
           BIN_NAME=${{ steps.bin.outputs.name }}
 
           if [ "${{ runner.os }}" = "Windows" ]; then
-            cp target/${{ matrix.target }}/release/${BIN_NAME}.exe dist/cli-${{ matrix.bin_suffix }}.exe
+            cp target/${{ matrix.target }}/release/${BIN_NAME}.exe dist/calcinum.exe
           else
-            cp target/${{ matrix.target }}/release/${BIN_NAME} dist/cli-${{ matrix.bin_suffix }}
+            cp target/${{ matrix.target }}/release/${BIN_NAME} dist/calcinum
+            chmod +x dist/calcinum
           fi
 
-      # ----------------------------
-      # Archive artifacts
-      # ----------------------------
       - name: Archive (tar.gz)
         if: runner.os != 'Windows'
         run: |
           cd dist
-          tar -czf cli-${{ matrix.bin_suffix }}.tar.gz *
+          tar -czf calcinum-${{ matrix.bin_suffix }}.tar.gz *
 
       - name: Archive (zip)
         if: runner.os == 'Windows'
+        shell: bash
         run: |
           cd dist
-          powershell Compress-Archive * cli-${{ matrix.bin_suffix }}.zip
+          powershell Compress-Archive * calcinum-windows.zip
 
-      # ----------------------------
-      # Upload release assets
-      # ----------------------------
       - name: Upload Release
         uses: softprops/action-gh-release@v2
         with:

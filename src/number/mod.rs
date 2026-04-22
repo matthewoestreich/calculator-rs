@@ -64,36 +64,18 @@ impl Number {
     /// Converts Number::Int to Number::Decimal.
     /// Number::Decimal is already the highest 'order'.
     pub fn promote(&mut self) {
-        if let Some(n) = self.take_int() {
-            *self = Self::Decimal(BigDecimal::from(n));
+        if let Number::Int(this) = self {
+            *self = Number::Decimal(BigDecimal::from_bigint(this.to_owned(), 0));
         }
     }
 
     /// Converts `Number::Decimal` to `Number::Int`.
     /// IMPORTANT : this may cause loss of data/precision!
     pub fn demote(&mut self) {
-        if let Some(ref mut d) = self.take_decimal() {
-            let (d, _) = d.with_scale(0).into_bigint_and_scale();
-            *self = Self::Int(d);
+        if let Number::Decimal(this) = self {
+            let (i, _) = this.with_scale(0).into_bigint_and_scale();
+            *self = Number::Int(i);
         }
-    }
-
-    /// Takes the backing BigInt leaivng 0 in it's place.
-    /// Returns None if variant isn't Number::Int
-    pub fn take_int(&mut self) -> Option<BigInt> {
-        if let Self::Int(n) = self {
-            return Some(std::mem::take(n));
-        }
-        None
-    }
-
-    /// Takes the backing BigDecimal leaving 0 in it's place.
-    /// Returns None if variant isn't Number::Decimal
-    pub fn take_decimal(&mut self) -> Option<BigDecimal> {
-        if let Self::Decimal(d) = self {
-            return Some(std::mem::take(d));
-        }
-        None
     }
 }
 
@@ -128,6 +110,8 @@ impl From<&Number> for NumberOrder {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+
     #[allow(dead_code)]
     pub(crate) fn expand_scientific(s: &str) -> String {
         let (mantissa, exp) = s
@@ -160,5 +144,45 @@ mod test {
 
         digits.insert(new_pos as usize, '.');
         digits
+    }
+
+    #[test]
+    fn demote_dec() {
+        let mut dec = "123.123".parse::<Number>().expect("Number");
+        let expect = Number::from(123);
+        assert_eq!(dec.order(), NumberOrder::Decimal);
+        dec.demote();
+        assert_eq!(dec.order(), NumberOrder::Int);
+        assert_eq!(dec, expect);
+    }
+
+    #[test]
+    fn demote_int() {
+        let mut int = Number::from(123);
+        let expect = Number::from(123);
+        assert_eq!(int.order(), NumberOrder::Int);
+        int.demote();
+        assert_eq!(int.order(), NumberOrder::Int);
+        assert_eq!(int, expect);
+    }
+
+    #[test]
+    fn promote_dec() {
+        let mut dec = "123.123".parse::<Number>().expect("Number");
+        let expect = "123.123".parse::<Number>().expect("Number");
+        assert_eq!(dec.order(), NumberOrder::Decimal);
+        dec.promote();
+        assert_eq!(dec.order(), NumberOrder::Decimal);
+        assert_eq!(dec, expect);
+    }
+
+    #[test]
+    fn promote_int() {
+        let mut int = Number::from(123);
+        let expect = "123.0".parse::<Number>().expect("Number");
+        assert_eq!(int.order(), NumberOrder::Int);
+        int.promote();
+        assert_eq!(int.order(), NumberOrder::Decimal);
+        assert_eq!(int, expect);
     }
 }

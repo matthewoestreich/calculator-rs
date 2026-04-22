@@ -173,3 +173,128 @@ macro_rules! match_shift_assign {
         }
     };
 }
+
+/// Includes AddAssign
+macro_rules! impl_add {
+    ($t:ty) => {
+        impl Add<$t> for Number {
+            type Output = Number;
+
+            fn add(self, rhs: $t) -> Self::Output {
+                self.add(Number::from(rhs))
+            }
+        }
+        impl Add<$t> for &Number {
+            type Output = Number;
+
+            fn add(self, rhs: $t) -> Self::Output {
+                self.add(&Number::from(rhs))
+            }
+        }
+        impl AddAssign<$t> for Number {
+            fn add_assign(&mut self, rhs: $t) {
+                self.add_assign(Number::from(rhs));
+            }
+        }
+    };
+}
+
+/// Includes SubAssign
+macro_rules! impl_sub {
+    ($t:ty) => {
+        impl Sub<$t> for Number {
+            type Output = Number;
+
+            fn sub(self, rhs: $t) -> Self::Output {
+                self.sub(Number::from(rhs))
+            }
+        }
+        impl Sub<$t> for &Number {
+            type Output = Number;
+
+            fn sub(self, rhs: $t) -> Self::Output {
+                self.sub(&Number::from(rhs))
+            }
+        }
+        impl SubAssign<$t> for Number {
+            fn sub_assign(&mut self, rhs: $t) {
+                self.sub_assign(Number::from(rhs));
+            }
+        }
+    };
+}
+
+/// Includes MulAssign
+macro_rules! impl_mul {
+    ($t:ty) => {
+        impl Mul<$t> for Number {
+            type Output = Number;
+
+            fn mul(self, rhs: $t) -> Self::Output {
+                self.mul(Number::from(rhs))
+            }
+        }
+        impl Mul<$t> for &Number {
+            type Output = Number;
+
+            fn mul(self, rhs: $t) -> Self::Output {
+                self.mul(&Number::from(rhs))
+            }
+        }
+        impl MulAssign<$t> for Number {
+            fn mul_assign(&mut self, rhs: $t) {
+                self.mul_assign(Number::from(rhs));
+            }
+        }
+    };
+}
+
+/// Includes DivAssign
+macro_rules! impl_div {
+    ($t:ty) => {
+        impl Div<$t> for Number {
+            type Output = Number;
+
+            fn div(self, rhs: $t) -> Self::Output {
+                self.div(Number::from(rhs))
+            }
+        }
+        impl Div<$t> for &Number {
+            type Output = Number;
+
+            fn div(self, rhs: $t) -> Self::Output {
+                self.div(&Number::from(rhs))
+            }
+        }
+        impl DivAssign<$t> for Number {
+            fn div_assign(&mut self, rhs: $t) {
+                self.div_assign(Number::from(rhs));
+            }
+        }
+    };
+}
+
+/// Includes RemAssign
+macro_rules! impl_rem {
+    ($t:ty) => {
+        impl Rem<$t> for Number {
+            type Output = Number;
+
+            fn rem(self, rhs: $t) -> Self::Output {
+                self.rem(Number::from(rhs))
+            }
+        }
+        impl Rem<$t> for &Number {
+            type Output = Number;
+
+            fn rem(self, rhs: $t) -> Self::Output {
+                self.rem(&Number::from(rhs))
+            }
+        }
+        impl RemAssign<$t> for Number {
+            fn rem_assign(&mut self, rhs: $t) {
+                self.rem_assign(Number::from(rhs));
+            }
+        }
+    };
+}

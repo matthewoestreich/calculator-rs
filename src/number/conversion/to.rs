@@ -82,10 +82,13 @@ impl Number {
     /// assert_eq!(c.to_i64_saturating(), 123i64);
     /// ````
     pub fn to_i64_saturating(&self) -> i64 {
-        match self {
-            Number::Int(i) => saturating_i64(i),
-            Number::Decimal(d) => saturating_i64(d),
-        }
+        self.to_i64().unwrap_or_else(|| {
+            if self.signum().is_negative() {
+                i64::MIN
+            } else {
+                i64::MAX
+            }
+        })
     }
 
     /// Converts the value of `self` to an `i128`. If the value cannot be
@@ -108,7 +111,7 @@ impl Number {
     }
 
     /// Converts the value of `self` to an `i128`. If the value cannot be represented by
-    /// an `i128`, then the value is truncated to fit within `i128` bounds, or saturated..
+    /// an `i128`, then the value is truncated to fit within `i128` bounds, aka saturated.
     ///
     /// <div class="warning">Lossy!</div>
     ///
@@ -138,10 +141,13 @@ impl Number {
     /// assert_eq!(d.to_i128_saturating(), i128::MAX);
     /// ````
     pub fn to_i128_saturating(&self) -> i128 {
-        match self {
-            Number::Int(i) => saturating_i128(i),
-            Number::Decimal(d) => saturating_i128(d),
-        }
+        self.to_i128().unwrap_or_else(|| {
+            if self.signum().is_negative() {
+                i128::MIN
+            } else {
+                i128::MAX
+            }
+        })
     }
 }
 
@@ -159,38 +165,6 @@ impl ToPrimitive for Number {
             Number::Decimal(d) => d.to_u64(),
         }
     }
-}
-
-/// If the underlying value for `T` does not fit within an
-/// `i128`, we truncate it to fit within `i128` bounds, which
-/// may result in data/precision/scale loss!
-fn saturating_i128<T>(x: &T) -> i128
-where
-    T: ToPrimitive + Signed,
-{
-    x.to_i128().unwrap_or_else(|| {
-        if x.signum().is_negative() {
-            i128::MIN
-        } else {
-            i128::MAX
-        }
-    })
-}
-
-/// If the underlying value for `T` does not fit within an
-/// `i64`, we truncate it to fit within `i64` bounds, which
-/// may result in data/precision/scale loss!
-fn saturating_i64<T>(x: &T) -> i64
-where
-    T: ToPrimitive + Signed,
-{
-    x.to_i64().unwrap_or_else(|| {
-        if x.signum().is_negative() {
-            i64::MIN
-        } else {
-            i64::MAX
-        }
-    })
 }
 
 /// Converts a decimal string to a binary string
@@ -391,4 +365,37 @@ pub(crate) fn binary_str_to_decimal_str(bin: &str) -> String {
         }
     }
     s
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn i64_saturating_max() {
+        let n = Number::from(i64::MAX) + Number::from(i64::MAX);
+        assert!(n.to_i64().is_none());
+        assert_eq!(n.to_i64_saturating(), i64::MAX);
+    }
+
+    #[test]
+    fn i64_saturating_min() {
+        let n = Number::from(i64::MIN) + Number::from(i64::MIN);
+        assert!(n.to_i64().is_none());
+        assert_eq!(n.to_i64_saturating(), i64::MIN);
+    }
+
+    #[test]
+    fn i128_saturating_max() {
+        let n = Number::from(i128::MAX) + Number::from(i128::MAX);
+        assert!(n.to_i128().is_none());
+        assert_eq!(n.to_i128_saturating(), i128::MAX);
+    }
+
+    #[test]
+    fn i128_saturating_min() {
+        let n = Number::from(i128::MIN) + Number::from(i128::MIN);
+        assert!(n.to_i128().is_none());
+        assert_eq!(n.to_i128_saturating(), i128::MIN);
+    }
 }

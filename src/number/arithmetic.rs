@@ -118,6 +118,17 @@ impl Number {
 // ========================== AddAssign/Add ==================================================
 // ===========================================================================================
 
+impl_add!(u8);
+impl_add!(u16);
+impl_add!(u32);
+impl_add!(u64);
+impl_add!(u128);
+impl_add!(i8);
+impl_add!(i16);
+impl_add!(i32);
+impl_add!(i64);
+impl_add!(i128);
+
 impl AddAssign<Number> for Number {
     fn add_assign(&mut self, rhs: Number) {
         self.add_assign(&rhs);
@@ -150,6 +161,17 @@ impl Add<&Number> for &Number {
 // ===========================================================================================
 // ========================== SubAssign/Sub ==================================================
 // ===========================================================================================
+
+impl_sub!(u8);
+impl_sub!(u16);
+impl_sub!(u32);
+impl_sub!(u64);
+impl_sub!(u128);
+impl_sub!(i8);
+impl_sub!(i16);
+impl_sub!(i32);
+impl_sub!(i64);
+impl_sub!(i128);
 
 impl SubAssign<Number> for Number {
     fn sub_assign(&mut self, rhs: Number) {
@@ -184,6 +206,17 @@ impl Sub<&Number> for &Number {
 // ========================== DivAssign/Div ==================================================
 // ===========================================================================================
 
+impl_div!(u8);
+impl_div!(u16);
+impl_div!(u32);
+impl_div!(u64);
+impl_div!(u128);
+impl_div!(i8);
+impl_div!(i16);
+impl_div!(i32);
+impl_div!(i64);
+impl_div!(i128);
+
 impl DivAssign<Number> for Number {
     fn div_assign(&mut self, rhs: Number) {
         self.div_assign(&rhs);
@@ -217,6 +250,17 @@ impl Div<&Number> for &Number {
 // ========================== MulAssign/Mul ==================================================
 // ===========================================================================================
 
+impl_mul!(u8);
+impl_mul!(u16);
+impl_mul!(u32);
+impl_mul!(u64);
+impl_mul!(u128);
+impl_mul!(i8);
+impl_mul!(i16);
+impl_mul!(i32);
+impl_mul!(i64);
+impl_mul!(i128);
+
 impl MulAssign<Number> for Number {
     fn mul_assign(&mut self, rhs: Number) {
         self.mul_assign(&rhs);
@@ -249,6 +293,17 @@ impl Mul<&Number> for &Number {
 // ===========================================================================================
 // ========================== RemAssign/Rem ==================================================
 // ===========================================================================================
+
+impl_rem!(u8);
+impl_rem!(u16);
+impl_rem!(u32);
+impl_rem!(u64);
+impl_rem!(u128);
+impl_rem!(i8);
+impl_rem!(i16);
+impl_rem!(i32);
+impl_rem!(i64);
+impl_rem!(i128);
 
 impl RemAssign<Number> for Number {
     fn rem_assign(&mut self, rhs: Number) {
@@ -380,6 +435,15 @@ mod test {
     use super::*;
     use rstest::*;
     use std::str::FromStr as _;
+
+    //#[rstest]
+    //#[case::add1("1", 1u8, "2")]
+    //fn maths(#[case] number: &str, #[case] rhs: u8, #[case] expect: &str) {
+    //    let lhs = number.parse::<Number>().expect("Number");
+    //    let e = expect.parse::<Number>().expect("Number");
+    //    let r = lhs + rhs;
+    //    assert_eq!(e, r, "expected '{e:?}' got '{r:?}'");
+    //}
 
     #[rstest]
     #[case::add1("1", "1", "2")]
@@ -540,4 +604,75 @@ mod test {
         let r = -n;
         assert_eq!(r, e, "expected {e:?} got {r:?}");
     }
+
+    // //////////////////////////////////////////////////////////////
+    // Macros + test for primitives
+    // //////////////////////////////////////////////////////////////
+
+    macro_rules! test_maths {
+        (
+            $name:ident,
+            $op:ident,
+            $t:ty,
+            [
+                $( [$lhs:expr, $rhs:expr, $expect:expr] ),* $(,)?
+            ]
+        ) => {
+            #[rstest]
+            $(
+                #[case($lhs, $rhs as $t, $expect)]
+            )*
+            fn $name(
+                #[case] number: &str,
+                #[case] rhs: $t,
+                #[case] expect: &str,
+            ) {
+                let lhs = number.parse::<Number>().expect("Number");
+                let e = expect.parse::<Number>().expect("Number");
+                let r = lhs.$op(rhs);
+                assert_eq!(e, r, "expected '{e:?}' got '{r:?}'");
+            }
+        };
+    }
+
+    macro_rules! generate_maths_tests {
+        ($op:ident, {
+            $(
+                $name:ident : $t:ty => $cases:tt
+            ),* $(,)?
+        }) => {
+            $(
+                test_maths!(
+                    $name, $op, $t,
+                    $cases
+                );
+            )*
+        };
+    }
+
+    generate_maths_tests!(add, {
+        add_u8  : u8  => [["1", 1, "2"], ["2", 2, "4"], ["2", u8::MAX, "257"]],
+        add_i8  : i8  => [["5", -5, "0"], ["-5", -5, "-10"], ["2", i8::MAX, "129"]],
+        add_u16 : u16 => [["1", 1, "2"], ["2", 2, "4"], ["2", u16::MAX, "65537"]],
+        add_i16 : i16 => [["5", -5, "0"], ["-5", -5, "-10"], ["2", i16::MAX, "32769"]],
+        add_u32 : u32 => [["1", 1, "2"], ["2", 2, "4"], ["2", u32::MAX, "4294967297"]],
+        add_i32 : i32 => [["5", -5, "0"], ["-5", -5, "-10"], ["2", i32::MAX, "2147483649"]],
+        add_u64 : u64 => [["1", 1, "2"], ["2", 2, "4"], ["2", u64::MAX, "18446744073709551617"]],
+        add_i64 : i64 => [["5", -5, "0"], ["-5", -5, "-10"], ["2", i64::MAX, "9223372036854775809"]],
+        add_u128 : u128 => [["1", 1, "2"], ["2", 2, "4"], ["2", u128::MAX, "340282366920938463463374607431768211457"]],
+        add_i128 : i128 => [["5", -5, "0"], ["-5", -5, "-10"], ["2", i128::MAX, "170141183460469231731687303715884105729"]],
+    });
+
+    generate_maths_tests!(sub, {
+        sub_u8  : u8  => [["1", 1, "0"], ["2", 2, "0"], ["-2", u8::MIN, "-2"]],
+        sub_i8  : i8  => [["5", -5, "10"], ["-5", -5, "0"], ["-2", i8::MAX, "-129"]],
+        sub_u16 : u16 => [["1", 1, "0"], ["2", 2, "0"], ["-2", u16::MAX, "-65537"]],
+        sub_i16 : i16 => [["5", -5, "10"], ["-5", -5, "0"], ["-2", i16::MAX, "-32769"]],
+        sub_u32 : u32 => [["1", 1, "0"], ["2", 2, "0"], ["-2", u32::MAX, "-4294967297"]],
+        sub_i32 : i32 => [["5", -5, "10"], ["-5", -5, "0"], ["-2", i32::MAX, "-2147483649"]],
+        sub_u64 : u64 => [["1", 1, "0"], ["2", 2, "0"], ["-2", u64::MAX, "-18446744073709551617"]],
+        sub_i64 : i64 => [["5", -5, "10"], ["-5", -5, "0"], ["-2", i64::MAX, "-9223372036854775809"]],
+        sub_u128 : u128 => [["1", 1, "0"], ["2", 2, "0"], ["-2", u128::MAX, "-340282366920938463463374607431768211457"]],
+        sub_i128 : i128 => [["5", -5, "10"], ["-5", -5, "0"], ["-2", i128::MAX, "-170141183460469231731687303715884105729"]],
+    });
 }

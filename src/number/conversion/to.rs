@@ -1,12 +1,8 @@
 use crate::{
     Number, NumberError,
-    number::{
-        conversion::{ByteOrder, number_to_bytes},
-        digit::HexDigit,
-        predicate,
-    },
+    number::{digit::HexDigit, predicate},
 };
-use num_traits::{Signed, ToBytes, ToPrimitive};
+use num_traits::{Signed, ToPrimitive};
 use std::str::FromStr;
 
 impl Number {
@@ -162,18 +158,6 @@ impl ToPrimitive for Number {
             Number::Int(i) => i.to_u64(),
             Number::Decimal(d) => d.to_u64(),
         }
-    }
-}
-
-impl ToBytes for Number {
-    type Bytes = Vec<u8>;
-
-    fn to_be_bytes(&self) -> Self::Bytes {
-        number_to_bytes(self, ByteOrder::BigEndian)
-    }
-
-    fn to_le_bytes(&self) -> Self::Bytes {
-        number_to_bytes(self, ByteOrder::LittleEndian)
     }
 }
 
@@ -407,45 +391,4 @@ pub(crate) fn binary_str_to_decimal_str(bin: &str) -> String {
         }
     }
     s
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use num_traits::FromBytes;
-    use rstest::*;
-
-    #[test]
-    fn foofoo() {
-        let n = "99999".parse::<Number>().unwrap();
-        let bytes = n.to_be_bytes();
-        println!("bytes= '{bytes:?}'");
-
-        let b = Number::from_be_bytes(&bytes);
-        println!("og= '{n:?}' | got= '{b:?}'");
-    }
-
-    #[rstest]
-    #[case::num_to_be_bytes1("123.123", Vec::from([1, 0, 0, 0, 3, 1, 224, 243, 0, 0, 0, 0, 0, 0, 0, 3]))]
-    #[case::num_to_be_bytes2("99999", Vec::from([0, 0, 0, 0, 3, 1, 134, 159]))]
-    fn number_to_be_bytes(#[case] num_str: &str, #[case] expected_be_bytes: Vec<u8>) {
-        let n = num_str.parse::<Number>().expect("Number");
-        let r = n.to_be_bytes();
-        assert_eq!(
-            expected_be_bytes, r,
-            "expected '{expected_be_bytes:?}' got '{r:?}'"
-        );
-    }
-
-    #[rstest]
-    #[case::num_to_le_bytes1("123.123", Vec::from([1, 3, 0, 0, 0, 1, 224, 243, 3, 0, 0, 0, 0, 0, 0, 0]))]
-    #[case::num_to_le_bytes2("99999", Vec::from([0, 3, 0, 0, 0, 1, 134, 159]))]
-    fn number_to_le_bytes(#[case] num_str: &str, #[case] expected_le_bytes: Vec<u8>) {
-        let n = num_str.parse::<Number>().expect("Number");
-        let r = n.to_le_bytes();
-        assert_eq!(
-            expected_le_bytes, r,
-            "expected '{expected_le_bytes:?}' got '{r:?}'"
-        );
-    }
 }

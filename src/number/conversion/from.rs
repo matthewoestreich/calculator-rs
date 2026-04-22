@@ -1,14 +1,10 @@
 use crate::{
     Number, NumberError,
-    number::{
-        conversion::{self, ByteOrder, number_from_bytes},
-        digit::HexDigit,
-        predicate,
-    },
+    number::{conversion, digit::HexDigit, predicate},
 };
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
-use num_traits::{FromBytes, FromPrimitive, Num as _};
+use num_traits::{FromPrimitive, Num as _};
 use std::str::FromStr;
 
 impl Number {
@@ -280,76 +276,5 @@ impl FromPrimitive for Number {
 
     fn from_u64(n: u64) -> Option<Self> {
         Some(Number::from(n))
-    }
-}
-
-impl FromBytes for Number {
-    type Bytes = Vec<u8>;
-
-    /// If something goes wrong during converion we return Number::ZERO
-    fn from_be_bytes(bytes: &Self::Bytes) -> Self {
-        number_from_bytes(bytes.as_slice(), ByteOrder::BigEndian)
-    }
-
-    /// If something goes wrong during converion we return Number::ZERO
-    fn from_le_bytes(bytes: &Self::Bytes) -> Self {
-        number_from_bytes(bytes.as_slice(), ByteOrder::LittleEndian)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use crate::NumberOrder;
-    use rstest::*;
-
-    #[rstest]
-    #[case::num_from_be_bytes1(Vec::from([1, 0, 0, 0, 3, 1, 224, 243, 0, 0, 0, 0, 0, 0, 0, 3]), "123.123", NumberOrder::Decimal, false)]
-    #[case::num_from_be_bytes2(Vec::from([0, 0, 0, 0, 3, 1, 134, 159]), "99999", NumberOrder::Int, false)]
-    fn number_from_be_bytes(
-        #[case] bytes: Vec<u8>,
-        #[case] expected_num: &str,
-        #[case] expect_order: NumberOrder,
-        #[case] expect_zero: bool,
-    ) {
-        let e_num = expected_num.parse::<Number>().expect("Number");
-        let r = Number::from_be_bytes(&bytes);
-        assert_eq!(
-            r.order(),
-            expect_order,
-            "expected order '{expect_order:?}' got order '{:?}'",
-            r.order()
-        );
-        assert!(if expect_zero {
-            r.is_zero()
-        } else {
-            !r.is_zero()
-        });
-        assert_eq!(e_num, r, "expected '{e_num}' got '{r}'");
-    }
-
-    #[rstest]
-    #[case::num_from_le_bytes1(Vec::from([1, 3, 0, 0, 0, 1, 224, 243, 3, 0, 0, 0, 0, 0, 0, 0]), "123.123", NumberOrder::Decimal, false)]
-    #[case::num_from_le_bytes2(Vec::from([0, 3, 0, 0, 0, 1, 134, 159]), "99999", NumberOrder::Int, false)]
-    fn number_from_le_bytes(
-        #[case] bytes: Vec<u8>,
-        #[case] expected_num: &str,
-        #[case] expect_order: NumberOrder,
-        #[case] expect_zero: bool,
-    ) {
-        let e_num = expected_num.parse::<Number>().expect("Number");
-        let r = Number::from_le_bytes(&bytes);
-        assert_eq!(
-            r.order(),
-            expect_order,
-            "expected order '{expect_order:?}' got order '{:?}'",
-            r.order()
-        );
-        assert!(if expect_zero {
-            r.is_zero()
-        } else {
-            !r.is_zero()
-        });
-        assert_eq!(e_num, r, "expected '{e_num}' got '{r}'");
     }
 }

@@ -1,8 +1,12 @@
 use crate::{
     Number, NumberError,
-    number::{digit::HexDigit, predicate},
+    number::{
+        conversion::{ByteOrder, number_to_bytes},
+        digit::HexDigit,
+        predicate,
+    },
 };
-use num_traits::{Signed, ToPrimitive};
+use num_traits::{Signed, ToBytes, ToPrimitive};
 use std::str::FromStr;
 
 impl Number {
@@ -60,25 +64,6 @@ impl Number {
     }
 
     /// Converts the value of `self` to an `i64`. If the value cannot be represented by
-    /// an `i64`, then `None` is returned.
-    ///
-    /// ```rust
-    /// use calcinum::Number;
-    ///
-    /// let a = Number::from(10);
-    /// assert_eq!(a.to_i64(), Some(10i64));
-    ///
-    /// let b = Number::from(i128::MAX);
-    /// assert_eq!(b.to_i64(), None);
-    /// ```
-    pub fn to_i64(&self) -> Option<i64> {
-        match self {
-            Number::Int(i) => i.to_i64(),
-            Number::Decimal(d) => d.to_i64(),
-        }
-    }
-
-    /// Converts the value of `self` to an `i64`. If the value cannot be represented by
     /// an `i64`, then the value is truncated to fit within `i64` bounds, or saturated..
     ///
     /// <div class="warning">Lossy!</div>
@@ -104,25 +89,6 @@ impl Number {
         match self {
             Number::Int(i) => saturating_i64(i),
             Number::Decimal(d) => saturating_i64(d),
-        }
-    }
-
-    /// Converts the value of `self` to an `i32`. If the value cannot be
-    /// represented by an `i32`, then `None` is returned.
-    ///
-    /// ```rust
-    /// use calcinum::Number;
-    ///
-    /// let a = Number::from(10);
-    /// assert_eq!(a.to_i32(), Some(10i32));
-    ///
-    /// let b = Number::from(i64::MAX);
-    /// assert_eq!(b.to_i32(), None);
-    /// ```
-    pub fn to_i32(&self) -> Option<i32> {
-        match self {
-            Number::Int(i) => i.to_i32(),
-            Number::Decimal(d) => d.to_i32(),
         }
     }
 
@@ -180,6 +146,34 @@ impl Number {
             Number::Int(i) => saturating_i128(i),
             Number::Decimal(d) => saturating_i128(d),
         }
+    }
+}
+
+impl ToPrimitive for Number {
+    fn to_i64(&self) -> Option<i64> {
+        match self {
+            Number::Int(i) => i.to_i64(),
+            Number::Decimal(d) => d.to_i64(),
+        }
+    }
+
+    fn to_u64(&self) -> Option<u64> {
+        match self {
+            Number::Int(i) => i.to_u64(),
+            Number::Decimal(d) => d.to_u64(),
+        }
+    }
+}
+
+impl ToBytes for Number {
+    type Bytes = Vec<u8>;
+
+    fn to_be_bytes(&self) -> Self::Bytes {
+        number_to_bytes(self, ByteOrder::BigEndian)
+    }
+
+    fn to_le_bytes(&self) -> Self::Bytes {
+        number_to_bytes(self, ByteOrder::LittleEndian)
     }
 }
 
@@ -413,4 +407,45 @@ pub(crate) fn binary_str_to_decimal_str(bin: &str) -> String {
         }
     }
     s
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use num_traits::FromBytes;
+    use rstest::*;
+
+    #[test]
+    fn foofoo() {
+        let n = "99999".parse::<Number>().unwrap();
+        let bytes = n.to_be_bytes();
+        println!("bytes= '{bytes:?}'");
+
+        let b = Number::from_be_bytes(&bytes);
+        println!("og= '{n:?}' | got= '{b:?}'");
+    }
+
+    #[rstest]
+    #[case::num_to_be_bytes1("123.123", Vec::from([1, 0, 0, 0, 3, 1, 224, 243, 0, 0, 0, 0, 0, 0, 0, 3]))]
+    #[case::num_to_be_bytes2("99999", Vec::from([0, 0, 0, 0, 3, 1, 134, 159]))]
+    fn number_to_be_bytes(#[case] num_str: &str, #[case] expected_be_bytes: Vec<u8>) {
+        let n = num_str.parse::<Number>().expect("Number");
+        let r = n.to_be_bytes();
+        assert_eq!(
+            expected_be_bytes, r,
+            "expected '{expected_be_bytes:?}' got '{r:?}'"
+        );
+    }
+
+    #[rstest]
+    #[case::num_to_le_bytes1("123.123", Vec::from([1, 3, 0, 0, 0, 1, 224, 243, 3, 0, 0, 0, 0, 0, 0, 0]))]
+    #[case::num_to_le_bytes2("99999", Vec::from([0, 3, 0, 0, 0, 1, 134, 159]))]
+    fn number_to_le_bytes(#[case] num_str: &str, #[case] expected_le_bytes: Vec<u8>) {
+        let n = num_str.parse::<Number>().expect("Number");
+        let r = n.to_le_bytes();
+        assert_eq!(
+            expected_le_bytes, r,
+            "expected '{expected_le_bytes:?}' got '{r:?}'"
+        );
+    }
 }

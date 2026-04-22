@@ -94,6 +94,122 @@ impl ToNumber for BigDecimal {
     }
 }
 
+/// Helper enum for the to/from be/le bytes for Number implementation.
+pub(crate) enum ByteOrder {
+    BigEndian,
+    LittleEndian,
+}
+
+/// Helper enum for the to/from be/le bytes for Number implementation.
+#[repr(u8)]
+pub(crate) enum ByteType {
+    Int = 0,
+    Decimal = 1,
+    Null = 9,
+}
+
+impl From<u8> for ByteType {
+    fn from(value: u8) -> Self {
+        if value == 0 {
+            Self::Int
+        } else if value == 1 {
+            Self::Decimal
+        } else {
+            Self::Null
+        }
+    }
+}
+
+/// Helper function for the to/from be/le bytes for Number implementation.
+pub(crate) fn number_to_bytes(number: &Number, bo: ByteOrder) -> Vec<u8> {
+    let (bi, exp, tag) = match number {
+        Number::Int(i) => (i, None, ByteType::Int as u8),
+        Number::Decimal(d) => {
+            let (bi, exp) = d.as_bigint_and_scale();
+            (&bi.into_owned(), Some(exp), ByteType::Decimal as u8)
+        }
+    };
+
+    let mut out = Vec::new();
+    out.push(tag);
+
+    let int_bytes = bi.to_signed_bytes_be();
+    let len = int_bytes.len() as u32;
+
+    match bo {
+        ByteOrder::BigEndian => out.extend_from_slice(&len.to_be_bytes()),
+        ByteOrder::LittleEndian => out.extend_from_slice(&len.to_le_bytes()),
+    }
+
+    // bigint
+    out.extend_from_slice(&int_bytes);
+
+    // exponent only if decimal
+    if let Some(exp) = exp {
+        match bo {
+            ByteOrder::BigEndian => out.extend_from_slice(&exp.to_be_bytes()),
+            ByteOrder::LittleEndian => out.extend_from_slice(&exp.to_le_bytes()),
+        }
+    }
+
+    out
+}
+
+/// Helper function for the to/from be/le bytes for Number implementation.
+/// **If something goes wrong during converion we return `Number::ZERO`**
+pub(crate) fn number_from_bytes(bytes: &[u8], bo: ByteOrder) -> Number {
+    if bytes.is_empty() {
+        return Number::ZERO;
+    }
+
+    let mut i = 0;
+    let tag = bytes[i];
+    i += 1;
+
+    let len = match bo {
+        ByteOrder::BigEndian => {
+            let Ok(b) = bytes[i..i + 4].try_into() else {
+                return Number::ZERO;
+            };
+            u32::from_be_bytes(b) as usize
+        }
+        ByteOrder::LittleEndian => {
+            let Ok(b) = bytes[i..i + 4].try_into() else {
+                return Number::ZERO;
+            };
+            u32::from_le_bytes(b) as usize
+        }
+    };
+    i += 4;
+
+    let int_bytes = &bytes[i..i + len];
+    i += len;
+
+    let bigint = BigInt::from_signed_bytes_be(int_bytes);
+
+    match ByteType::from(tag) {
+        ByteType::Int => Number::Int(bigint),
+        ByteType::Decimal => {
+            let exp = match bo {
+                ByteOrder::BigEndian => {
+                    let Ok(b) = bytes[i..i + 8].try_into() else {
+                        return Number::ZERO;
+                    };
+                    i64::from_be_bytes(b)
+                }
+                ByteOrder::LittleEndian => {
+                    let Ok(b) = bytes[i..i + 8].try_into() else {
+                        return Number::ZERO;
+                    };
+                    i64::from_le_bytes(b)
+                }
+            };
+            Number::Decimal(BigDecimal::from_bigint(bigint, exp))
+        }
+        _ => Number::ZERO, // unknown type safety fallback
+    }
+}
+
 // ===========================================================================================
 // ========================== Tests ==========================================================
 // ===========================================================================================

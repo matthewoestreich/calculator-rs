@@ -14,6 +14,7 @@ pub enum NumberError {
     ExponentOverflow(AstroSign),
     InvalidArgument,
     MemoryAllocation,
+    UnsupportedRadix(u32),
 }
 
 impl fmt::Display for NumberError {
@@ -29,6 +30,7 @@ impl fmt::Display for NumberError {
             NumberError::ExponentOverflow(sign) => write!(f, "exponent overflow '{sign:?}'"),
             NumberError::InvalidArgument => write!(f, "invalid argument"),
             NumberError::MemoryAllocation => write!(f, "memory allocation failed"),
+            NumberError::UnsupportedRadix(radix) => write!(f, "unsupported radix : '{radix}'"),
         }
     }
 }

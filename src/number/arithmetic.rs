@@ -1,6 +1,7 @@
 use crate::{Number, NumberError};
 use bigdecimal::BigDecimal;
 use num_bigint::BigInt;
+use num_traits::{ConstZero, Num, One, Signed, Zero};
 use std::ops::{
     Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Rem, RemAssign, Sub, SubAssign,
 };
@@ -301,6 +302,72 @@ impl Neg for &Number {
             Number::Int(i) => Number::Int(-i),
             Number::Decimal(d) => Number::Decimal(-d),
         }
+    }
+}
+
+// ===========================================================================================
+// ========================== num_traits Impls ===============================================
+// ===========================================================================================
+
+impl Num for Number {
+    type FromStrRadixErr = NumberError;
+
+    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+        match radix {
+            2 => Number::from_binary_str(str),
+            6 => Number::from_hexadecimal_str(str),
+            10 => str.parse::<Number>(),
+            64 => Number::from_base64_str(str),
+            _ => Err(NumberError::UnsupportedRadix(radix)),
+        }
+    }
+}
+
+impl Zero for Number {
+    fn zero() -> Self {
+        Self::ZERO
+    }
+
+    fn is_zero(&self) -> bool {
+        self.is_zero()
+    }
+}
+
+impl ConstZero for Number {
+    const ZERO: Self = Self::ZERO;
+}
+
+impl One for Number {
+    fn one() -> Self {
+        Self::from(1)
+    }
+}
+
+impl Signed for Number {
+    fn abs(&self) -> Self {
+        self.abs()
+    }
+
+    fn abs_sub(&self, other: &Self) -> Self {
+        self.sub(other).abs()
+    }
+
+    fn signum(&self) -> Self {
+        if self.is_zero() {
+            Self::ZERO
+        } else if self.is_positive() {
+            Self::one()
+        } else {
+            Self::one().neg()
+        }
+    }
+
+    fn is_positive(&self) -> bool {
+        self.is_positive()
+    }
+
+    fn is_negative(&self) -> bool {
+        self.is_negative()
     }
 }
 

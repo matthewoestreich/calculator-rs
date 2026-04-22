@@ -82,6 +82,19 @@ impl fmt::Binary for Number {
     }
 }
 
+impl fmt::Octal for Number {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Number::Int(i) => i.to_string(),
+            Number::Decimal(d) => d.to_string(),
+        };
+        match conversion::decimal_str_to_octal_str(&s) {
+            Ok(ds) => write!(f, "{ds}"),
+            Err(_) => write!(f, "{s}"),
+        }
+    }
+}
+
 impl fmt::LowerHex for Number {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -569,5 +582,14 @@ mod test {
             "expected kind '{expected_kind:?}' got kind '{:?}'",
             parsed.kind
         );
+    }
+
+    #[rstest]
+    #[case::octal1("123.123", "173.173")]
+    #[case::octal2("-123.123", "-173.173")]
+    fn to_octal(#[case] number: &str, #[case] expect: &str) {
+        let n = number.parse::<Number>().expect("Number");
+        let r = n.to_octal_str();
+        assert_eq!(&r, expect, "expected octal '{expect}' got octal '{r}'");
     }
 }

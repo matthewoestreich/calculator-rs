@@ -59,6 +59,22 @@ impl Number {
         Self::base64_encode(&self.to_string())
     }
 
+    /// Formats `self` as an octal string.
+    ///
+    /// We format decimals that contain a fractional part literally. Meaning, we format
+    /// the integer part and fractional part separately, then combine them via a decimal
+    /// while preserving the sign.
+    ///
+    /// ```rust
+    /// use calcinum::Number;
+    ///
+    /// let a = "-123.123".parse::<Number>().expect("Number");
+    /// assert_eq!(&a.to_octal_str(), "-173.173");
+    /// ```
+    pub fn to_octal_str(&self) -> String {
+        format!("{self:o}")
+    }
+
     /// Converts the value of `self` to an `i64`. If the value cannot be represented by
     /// an `i64`, then the value is truncated to fit within `i64` bounds, or saturated..
     ///
@@ -310,6 +326,85 @@ pub(crate) fn decimal_str_to_hexadecimal_str(
         let (fract_quotient, fract_remainder) = fract_dividend.div_mod(16);
         let fract_char = HexDigit::from_str(&fract_remainder.to_string())?.to_char(uppercase);
         fract_str.push(fract_char);
+        if fract_quotient.is_zero() {
+            break;
+        }
+        fract_dividend = fract_quotient;
+    }
+
+    let fract_output: String = fract_str.chars().rev().collect();
+    output.push_str(&fract_output);
+
+    Ok(output)
+}
+
+/// Converts decimal string to octal string.
+pub(crate) fn decimal_str_to_octal_str(decimal_str: &str) -> Result<String, NumberError> {
+    if decimal_str == "0" || decimal_str.is_empty() {
+        return Ok("0".to_string());
+    }
+
+    let mut iter = decimal_str.chars().peekable();
+    let mut is_negative = false;
+
+    if let Some(&p) = iter.peek()
+        && p == '-'
+    {
+        is_negative = true;
+        iter.next();
+    };
+
+    let mut int_part = String::new();
+    let mut fract_part = String::new();
+    let mut seen_decimal = false;
+
+    for c in iter {
+        match c {
+            // Already checked front
+            '-' => return Err(NumberError::InvalidArgument),
+            '.' if !seen_decimal => seen_decimal = true,
+            '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' => {
+                if !seen_decimal {
+                    int_part.push(c);
+                } else {
+                    fract_part.push(c);
+                }
+            }
+            _ => return Err(NumberError::InvalidArgument),
+        }
+    }
+
+    let mut int_dividend = int_part.parse::<Number>()?;
+    let mut int_str = String::new();
+
+    loop {
+        let (int_quotient, int_remainder) = int_dividend.div_mod(8);
+        int_str.push_str(&int_remainder.to_string());
+        if int_quotient.is_zero() {
+            break;
+        }
+        int_dividend = int_quotient;
+    }
+
+    if is_negative {
+        int_str.push('-');
+    }
+
+    let mut output = int_str.chars().rev().collect();
+
+    // RETURN if there is no more work to do.
+    if !seen_decimal {
+        return Ok(output);
+    }
+
+    output.push('.');
+
+    let mut fract_dividend = fract_part.parse::<Number>()?;
+    let mut fract_str = String::new();
+
+    loop {
+        let (fract_quotient, fract_remainder) = fract_dividend.div_mod(8);
+        fract_str.push_str(&fract_remainder.to_string());
         if fract_quotient.is_zero() {
             break;
         }

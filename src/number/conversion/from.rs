@@ -309,6 +309,12 @@ impl TryFrom<f64> for Number {
 impl FromStr for Number {
     type Err = NumberError;
 
+    /// The following radicies require a special prefix :
+    ///
+    /// 2  (binary)  => `0b`
+    /// 6  (hex)     => '0x'
+    /// 8  (octal)   => '0o'
+    /// 64 (base64)  => 'b64'
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Ok(n) = Number::from_binary_str(s) {
             return Ok(n);

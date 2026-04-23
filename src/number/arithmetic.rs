@@ -369,10 +369,10 @@ impl Num for Number {
 
     /// The following radicies require a special prefix :
     ///
-    /// 2 => `0b`
-    /// 6 => '0x'
-    /// 8 => '0o'
-    /// 64 => 'b64'
+    /// 2  (binary)  => `0b`
+    /// 6  (hex)     => '0x'
+    /// 8  (octal)   => '0o'
+    /// 64 (base64)  => 'b64'
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         match radix {
             2 => Number::from_binary_str(str),

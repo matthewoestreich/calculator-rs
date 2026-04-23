@@ -56,9 +56,9 @@ impl Number {
     ///   -0xFFA.FFA
     ///   | | | |
     ///   | | | +-- A single decimal anywhere after `0x` (or `-0x`) prefix
-    ///   | | +-- Any amount of valid hexadecimal characters (see below)
-    ///   | +-- `0x` (or `-0x` for negative numbers) is required as prefix
-    ///   +---- A single negative sign; only allowed as first char
+    ///   | | +---- Any amount of valid hexadecimal characters (see below)
+    ///   | +------ `0x` (or `-0x` for negative numbers) is required as prefix
+    ///   +-------- A single negative sign; only allowed as first char
     /// ```
     ///
     /// </div>
@@ -133,6 +133,24 @@ impl Number {
     /// Octal strings must start with `0o` or `-0o` for negative octal numbers.
     /// Outside of '-' or '.', octal strings can only contain digits "0" - "7".
     ///
+    /// <div class="warning">
+    ///
+    /// # A valid octal string
+    ///
+    /// ```text
+    ///   -0o173.173
+    ///   | | | |
+    ///   | | | +-- A single decimal anywhere after `0o` (or `-0o`) prefix
+    ///   | | +---- Any amount of valid octal characters (see below)
+    ///   | +------ `0o` (or `-0o` for negative numbers) is required as prefix
+    ///   +-------- A single negative sign; only allowed as first char
+    /// ```
+    ///
+    /// </div>
+    ///
+    /// # Valid Octal Characters
+    /// - Any combination of digits `0`-`7`
+    ///
     /// ```rust
     /// use calcinum::Number;
     ///
@@ -203,7 +221,6 @@ impl Number {
         if s == "b64" || !s.starts_with("b64") {
             return Err(NumberError::InvalidArgument);
         }
-
         let s = s.strip_prefix("b64").unwrap_or(s);
         let d = Self::base64_decode(s);
         d.parse::<Number>()

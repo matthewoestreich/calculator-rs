@@ -53,9 +53,9 @@ impl Number {
     ///
     /// ```text
     ///   -FFA.FFA
-    ///   |  |  |
-    ///   |  |  +-- A single decimal anywhere after `0x` (or `-0x`) prefix
-    ///   |  +----- Any amount of valid hexadecimal characters (see below)
+    ///   | | |
+    ///   | | +---- A single decimal anywhere after `0x` (or `-0x`) prefix
+    ///   | +------ Any amount of valid hexadecimal characters (see below)
     ///   +-------- A single negative sign; only allowed as first char
     /// ```
     ///
